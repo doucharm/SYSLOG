@@ -8,3 +8,6 @@ Captain's log:
             Created a database ( database first approach ) for testing
 <br />
 -10/13/2023: Successfully connect front end, monitor and database. All testing will be perform using UG_Database a UserGroup front end page
+</br />
+-10/16/2023: Project Day 1. 
+![Tunneling request through application](image-1.png)
