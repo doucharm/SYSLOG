@@ -3,10 +3,12 @@ from pydantic import BaseModel
 from fastapi import FastAPI, Request,Response
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from permisions import origins
 from prometheus_client import make_asgi_app,Counter,generate_latest,Histogram,Summary
 import time
 
+origins = [
+    "http://localhost:3000",
+]
 app = FastAPI()
 metrics=make_asgi_app()
 app.mount("/metric",metrics)
@@ -39,7 +41,7 @@ post_count = Counter("post_count","Number of post requests")
 fail_count = Counter("fail_count","Number of failed requests")
 query_time = Histogram('query_time',"Wait time for request sent")
 query_length = Histogram('query_length','The length of the response from database',buckets=[0,100,200,400,500,750,1000,2000,3000,4000,5000])
-proxy = "http://localhost:31120/gql" #location of the database
+proxy = "http://gql_ug:8000/gql" #location of the database
 
 @app.post("/gql", response_class=JSONResponse)
 async def GQL_Post(data: Item, request: Request):
