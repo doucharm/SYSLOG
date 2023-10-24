@@ -3,12 +3,11 @@ from pydantic import BaseModel
 from fastapi import FastAPI, Request,Response
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_client import make_asgi_app,Counter,generate_latest,Histogram,Summary
+from prometheus_client import make_asgi_app,generate_latest
 import time
 
-origins = [
-    "http://localhost:3000",
-]
+from .metrics import https_post_request_count,https_request_count,query_returned_length,query_waiting_time,frequency_access_from_origin
+from .origins import origins
 app = FastAPI()
 metrics=make_asgi_app()
 app.mount("/metric",metrics)
@@ -36,12 +35,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-request_count = Counter("request_count","Number of requests")
-post_count = Counter("post_count","Number of post requests")
-fail_count = Counter("fail_count","Number of failed requests")
-query_time = Histogram('query_time',"Wait time for request sent")
-query_length = Histogram('query_length','The length of the response from database',buckets=[0,100,200,400,500,750,1000,2000,3000,4000,5000])
-proxy = "http://gql_ug:8000/gql" #location of the database
+
+proxy = "http://gql_ug:31120/gql" #location of the database
 
 @app.post("/gql", response_class=JSONResponse)
 async def GQL_Post(data: Item, request: Request):
@@ -50,15 +45,16 @@ async def GQL_Post(data: Item, request: Request):
     gqlQuery["variables"] = data.variables
     info=Info(request.method,request.url,request.headers["origin"],request.client.port)
     print(info.__dict__,sep="\n")
-    request_count.inc()
-    post_count.inc()
+    https_request_count.inc()
+    https_post_request_count.inc()
+    frequency_access_from_origin.labels(origin = request.url).inc()
     async with aiohttp.ClientSession() as session:
         async with session.post(proxy, json=gqlQuery, headers={}) as resp:
             json = await resp.json()
             time_end=time.time()
-            query_time.observe(time_end-time_start)
+            query_waiting_time.observe(time_end-time_start)
     response=JSONResponse(content=json, status_code=resp.status)
-    query_length.observe(int({key.decode('utf-8'): value.decode('utf-8') for key, value in response.raw_headers}.get('content-length')))
+    query_returned_length.observe(int({key.decode('utf-8'): value.decode('utf-8') for key, value in response.raw_headers}.get('content-length')))
     return response
 
 @app.get('/metric')
