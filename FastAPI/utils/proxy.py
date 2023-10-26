@@ -1,0 +1,1 @@
+proxy = "http://gql_ug:8000/gql" #location of the database

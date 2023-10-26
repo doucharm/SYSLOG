@@ -6,8 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app,generate_latest
 import time
 
-from .metrics import https_post_request_count,https_request_count,query_returned_length,query_waiting_time,frequency_access_from_origin
-from .origins import origins
+from utils.metrics import https_post_request_count,https_request_count,query_returned_length,query_waiting_time,frequency_access_from_origin
+from utils.origins import origins
+from utils.proxy import proxy
 app = FastAPI()
 metrics=make_asgi_app()
 app.mount("/metric",metrics)
@@ -36,7 +37,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-proxy = "http://gql_ug:31120/gql" #location of the database
+
 
 @app.post("/gql", response_class=JSONResponse)
 async def GQL_Post(data: Item, request: Request):
@@ -47,7 +48,7 @@ async def GQL_Post(data: Item, request: Request):
     print(info.__dict__,sep="\n")
     https_request_count.inc()
     https_post_request_count.inc()
-    frequency_access_from_origin.labels(origin = request.url).inc()
+    frequency_access_from_origin.labels(info.client).inc()
     async with aiohttp.ClientSession() as session:
         async with session.post(proxy, json=gqlQuery, headers={}) as resp:
             json = await resp.json()
