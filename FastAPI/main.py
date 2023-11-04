@@ -11,7 +11,7 @@ from utils.origins import origins
 from utils.proxy import proxy
 app = FastAPI()
 metrics=make_asgi_app()
-app.mount("/metric",metrics)
+app.mount("/metrics",metrics)
 class Item(BaseModel):
     query: str
     variables: dict = None

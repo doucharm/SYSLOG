@@ -1,17 +1,26 @@
-version: '3.9'
-volumes:
-  grafana-data:
-    driver: local
 services:
-
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - 9091:9090
+    restart: unless-stopped
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prom_data:/prometheus
   grafana:
-    image: grafana/grafana-oss:latest
+    image: grafana/grafana
     container_name: grafana
     ports:
-      - "3000:3000"
-    volumes:
-      - grafana-data:/var/lib/grafana
+      - 3001:3000
     restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=grafana
+    volumes:
+      - ./grafana:/etc/grafana/provisioning/datasources
   fastapi:
     container_name: fastapi
     build: 
@@ -19,12 +28,6 @@ services:
       dockerfile: ./Dockerfile
     ports:
      - 8010:8010
-  prometheus:
-    image: prom/prometheus
-    restart: always
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-    ports:
-      - 9091:9091
+volumes:
+  prom_data:
+
