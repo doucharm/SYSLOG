@@ -18,8 +18,8 @@ class TokenGQLModel:
         return self.id
 
     @strawberry.field(description="""Bearer token for authentication""")
-    def token(self) -> str:
-        return self.token
+    def bearer_token(self) -> str:
+        return self.bearer_token
 
     @strawberry.field(description="""Request with invalid token will not be allowed to access the database""")
     def valid(self) -> bool:
@@ -37,7 +37,7 @@ class TokenGQLModel:
     def response_length(self) -> int:
         return self.response_length
 
-    @strawberry.field(description="""The last time this token is changed""")
+    @strawberry.field(description="""The last time this token was changed""")
     def lastchange(self) -> datetime.datetime:
         if self.lastchange == None:
             return datetime.datetime.now()
@@ -53,11 +53,11 @@ async def token_by_id(info: strawberry.types.Info, id: uuid.UUID) -> typing.Opti
 @strawberry.field(description="""Return information about a token when search by token""")
 async def token_by_str(info: strawberry.types.Info,search_str:str) -> typing.Optional[TokenGQLModel]:
     loaders = getLoadersFromInfo(info).tokens
-    return await loaders.filter_by(token = search_str)
+    return await loaders.filter_by(bearer_token = search_str)
 @strawberry.field(description="""Return all tokens in the database""")
-async def token_list(info:strawberry.types.Info,skip:int=0,limit:int =100) -> typing.List[TokenGQLModel]:
+async def token_list(info:strawberry.types.Info) -> typing.List[TokenGQLModel]:
     loaders=getLoadersFromInfo(info).tokens
-    result = await loaders.page(skip, limit)
+    result = await loaders.get_all()
     return result
     
 ###################################################################
@@ -66,19 +66,22 @@ async def token_list(info:strawberry.types.Info,skip:int=0,limit:int =100) -> ty
 
 @strawberry.input(description="Create a token corelate to a session")
 class TokenInsertGQLModel:
-    token: str = strawberry.field(description="Bearer token")
-    id: typing.Optional[strawberry.ID] = strawberry.field(description="primary key (UUID), could be client generated", default=None)
+    bearer_token: str = strawberry.field(description="Bearer token")
+    id: typing.Optional[strawberry.ID] = strawberry.field(description="primary key (UUID), could be client generated",default=None)
     valid: typing.Optional[bool] = strawberry.field(description="Only valid token can be used",default=True)
+    number_of_request: typing.Optional[int] = strawberry.field(description="Number of request carried out by this token/client session",default=0)
+    number_of_fail_request: typing.Optional[int] = strawberry.field(description="Number of fail response message for request carried out by this token/client session",default=0)
+    response_length: typing.Optional[int] = strawberry.field(description="Average length for successful response",default=0)
 
 @strawberry.input(description="Update the information of a token")
 class TokenUpdateGQLModel:
     id: strawberry.ID = strawberry.field(description="primary key (UUID), identifies object of operation")
     lastchange: datetime.datetime = strawberry.field(description="timestamp / token for multiuser updates")
-    token: typing.Optional[str] = strawberry.field(description="Bearer token", default=None)
-    valid: typing.Optional[bool] = strawberry.field(description="Only valid token can be used",default=True)
+    bearer_token: typing.Optional[str] = strawberry.field(description="Bearer token")
+    valid: typing.Optional[bool] = strawberry.field(description="Only valid token can be used")
     number_of_request: typing.Optional[int] = strawberry.field(description="Number of request carried out by this token/client session",default=0)
     number_of_fail_request: typing.Optional[int] = strawberry.field(description="Number of fail response message for request carried out by this token/client session",default=0)
-    response_length: typing.Optional[int] = strawberry.field(description="Average length for successful response",default=0)
+    response_length: typing.Optional[int] = strawberry.field(description="Average length for successful response")
 
 
 
@@ -91,8 +94,9 @@ class TokenResultGQLModel:
     async def token(self, info: strawberry.types.Info) -> TokenGQLModel:
         return await TokenGQLModel.resolve_reference(info, self.id)
 
-@strawberry.mutation(description="write new token into database")
+@strawberry.mutation(description="Write new token into database")
 async def token_insert(self, info: strawberry.types.Info, token: TokenInsertGQLModel) -> TokenResultGQLModel:
+    print("this is the test",token.__dict__)
     if token.id is None:
         token.id=uuid.uuid1()
     loader = getLoadersFromInfo(info).tokens

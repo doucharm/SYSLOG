@@ -24,10 +24,9 @@ def createLoader(asyncSessionMaker, DBModel):
             async with asyncSessionMaker() as session:
                 statement = baseStatement.filter_by(id=id)
                 rows = await session.execute(statement)
-                print(rows)
                 rows = rows.scalars()
-                print(rows)
                 row = next(rows, None)
+                print(row)
                 return row
         
         async def filter_by(self, **kwargs):
@@ -35,8 +34,15 @@ def createLoader(asyncSessionMaker, DBModel):
                 statement = baseStatement.filter_by(**kwargs)
                 rows = await session.execute(statement)
                 rows = rows.scalars()
+                print(rows)
+                row = next(rows, None)
+                print(row)
+                return row
+        async def get_all(self):
+            async with asyncSessionMaker() as session:
+                rows=await session.execute(baseStatement)
+                rows=rows.scalars()
                 return rows
-
         async def insert(self, entity, extra={}):
             newdbrow = DBModel()
             newdbrow = update(newdbrow, entity, extra)

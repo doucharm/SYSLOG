@@ -11,3 +11,6 @@ Captain's log:
 </br />
 -10/16/2023: Project Day 1. 
 ![Tunneling request through application](image-1.png)
+<br/> 11/7/2023: Adding a syslog container that transport log to port 514
+<br/>11/13/2023: Finishing the database for containing bearer token 
+![Function GetAllToken return all tokens in database](image.png)
