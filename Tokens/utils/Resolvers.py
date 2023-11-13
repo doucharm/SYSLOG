@@ -2,7 +2,7 @@ import datetime
 from sqlalchemy import select
 from functools import cache
 
-from .DBModel.DBToken import Token
+from DBModel.DBToken import Token
 
 def update(destination, source=None, extraValues={}):
     if source is not None:
@@ -24,7 +24,9 @@ def createLoader(asyncSessionMaker, DBModel):
             async with asyncSessionMaker() as session:
                 statement = baseStatement.filter_by(id=id)
                 rows = await session.execute(statement)
+                print(rows)
                 rows = rows.scalars()
+                print(rows)
                 row = next(rows, None)
                 return row
         

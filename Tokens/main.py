@@ -8,7 +8,7 @@ appcontext = {}
 @asynccontextmanager
 async def initEngine(app: FastAPI):
 
-    from .DBModel import startEngine, ComposeConnectionString
+    from DBModel import startEngine, ComposeConnectionString
 
     connectionstring = ComposeConnectionString()
 
@@ -27,7 +27,7 @@ def hello():
 
 
 def get_context():
-    from .Resolvers import createLoadersContext
+    from utils.Resolvers import createLoadersContext
     return createLoadersContext(appcontext["asyncSessionMaker"])
 graphql_app = GraphQLRouter(
     schema,

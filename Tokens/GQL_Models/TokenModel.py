@@ -2,18 +2,15 @@ import uuid
 import strawberry
 import datetime
 import typing
-from ..Resolvers import getLoadersFromInfo
+from utils.Resolvers import getLoadersFromInfo
 @strawberry.federation.type(keys=["id"],description="""Entity representing a token of a session """,)
 class TokenGQLModel:
     @classmethod
-    async def resolve_reference(cls, info: strawberry.types.Info, token: str):
-        if token is None: 
+    async def resolve_reference(cls, info: strawberry.types.Info, id:uuid.UUID):
+        if id is None: 
             return None
-
         loaders = getLoadersFromInfo(info)
-        eventloader = loaders.events
-        result = await eventloader.load(id=id)
-
+        result = await loaders.tokens.load(id=id)
         return result
 
     @strawberry.field(description="""Primary key""")
@@ -50,10 +47,19 @@ class TokenGQLModel:
 #################################################################
 ##____________________Query session____________________________##
 #################################################################
-@strawberry.field(description="""Return information about a token""")
-async def token_info(info: strawberry.types.Info, token: str) -> TokenGQLModel:
-    return await TokenGQLModel.resolve_reference(info, token)
-
+@strawberry.field(description="""Return information about a token when search by id""")
+async def token_by_id(info: strawberry.types.Info, id: uuid.UUID) -> typing.Optional[TokenGQLModel]:
+    return await TokenGQLModel.resolve_reference(info, id)
+@strawberry.field(description="""Return information about a token when search by token""")
+async def token_by_str(info: strawberry.types.Info,search_str:str) -> typing.Optional[TokenGQLModel]:
+    loaders = getLoadersFromInfo(info).tokens
+    return await loaders.filter_by(token = search_str)
+@strawberry.field(description="""Return all tokens in the database""")
+async def token_list(info:strawberry.types.Info,skip:int=0,limit:int =100) -> typing.List[TokenGQLModel]:
+    loaders=getLoadersFromInfo(info).tokens
+    result = await loaders.page(skip, limit)
+    return result
+    
 ###################################################################
 ##_____________________________Mutations_________________________##
 ###################################################################
@@ -72,7 +78,7 @@ class TokenUpdateGQLModel:
     valid: typing.Optional[bool] = strawberry.field(description="Only valid token can be used",default=True)
     number_of_request: typing.Optional[int] = strawberry.field(description="Number of request carried out by this token/client session",default=0)
     number_of_fail_request: typing.Optional[int] = strawberry.field(description="Number of fail response message for request carried out by this token/client session",default=0)
-    request_length: typing.Optional[int] = strawberry.field(description="Average length for successful response",default=0)
+    response_length: typing.Optional[int] = strawberry.field(description="Average length for successful response",default=0)
 
 
 
@@ -83,10 +89,12 @@ class TokenResultGQLModel:
 
     @strawberry.field(description="""returns the token""")
     async def token(self, info: strawberry.types.Info) -> TokenGQLModel:
-        return await TokenGQLModel.resolve_reference(info, self.token)
+        return await TokenGQLModel.resolve_reference(info, self.id)
 
 @strawberry.mutation(description="write new token into database")
 async def token_insert(self, info: strawberry.types.Info, token: TokenInsertGQLModel) -> TokenResultGQLModel:
+    if token.id is None:
+        token.id=uuid.uuid1()
     loader = getLoadersFromInfo(info).tokens
     row = await loader.insert(token)
     result = TokenResultGQLModel()
@@ -101,7 +109,7 @@ async def token_update(self, info: strawberry.types.Info, token: TokenUpdateGQLM
     result = TokenResultGQLModel()
     result.id = token.id
     if row is None:
-        result.msg = "fail"
+        result.msg = "Failed "
     else:    
-        result.msg = "ok"
+        result.msg = "Success"
     return result

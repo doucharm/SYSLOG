@@ -28,6 +28,13 @@ services:
       dockerfile: ./Dockerfile
     ports:
      - 8010:8010
+  syslog-ng:
+    image:  balabit/syslog-ng:latest
+    container_name: syslog-ng
+    ports:
+      - 601:601
+      - 514:514/udp
+    restart: unless-stopped
 volumes:
   prom_data:
 

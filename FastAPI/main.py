@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app,generate_latest
 import time
-
+from utils.syslog_exporter import logger
 from utils.metrics import https_post_request_count,https_request_count,query_returned_length,query_waiting_time,frequency_access_from_origin
 from utils.origins import origins
 from utils.proxy import proxy
@@ -41,6 +41,8 @@ app.add_middleware(
 
 @app.post("/gql", response_class=JSONResponse)
 async def GQL_Post(data: Item, request: Request):
+
+    logger.warning(request.headers.__dict__)
     time_start=time.time()
     gqlQuery = {"query": data.query}
     gqlQuery["variables"] = data.variables
