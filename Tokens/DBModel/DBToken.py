@@ -13,5 +13,4 @@ class Token(BaseModel):
     number_of_request = Column(Integer,comment='Number of request sent to the server in this session',default=0)
     number_of_fail_request = Column(Integer, comment = 'Number of fail request',default=0)
     response_length = Column(Integer,comment = 'Average length of a response in this session',default=0)
-    lastchange = Column(DateTime, default=datetime.datetime.now)
 

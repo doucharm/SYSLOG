@@ -18,7 +18,7 @@ class TokenGQLModel:
         return self.id
 
     @strawberry.field(description="""Bearer token for authentication""")
-    def bearer_token(self) -> str:
+    def bearer_token(self) -> typing.Optional[str]:
         return self.bearer_token
 
     @strawberry.field(description="""Request with invalid token will not be allowed to access the database""")
@@ -37,13 +37,6 @@ class TokenGQLModel:
     def response_length(self) -> int:
         return self.response_length
 
-    @strawberry.field(description="""The last time this token was changed""")
-    def lastchange(self) -> datetime.datetime:
-        if self.lastchange == None:
-            return datetime.datetime.now()
-        else :
-            return self.lastchange
-        
 #################################################################
 ##____________________Query session____________________________##
 #################################################################
@@ -75,13 +68,12 @@ class TokenInsertGQLModel:
 
 @strawberry.input(description="Update the information of a token")
 class TokenUpdateGQLModel:
-    id: strawberry.ID = strawberry.field(description="primary key (UUID), identifies object of operation")
-    lastchange: datetime.datetime = strawberry.field(description="timestamp / token for multiuser updates")
-    bearer_token: typing.Optional[str] = strawberry.field(description="Bearer token")
-    valid: typing.Optional[bool] = strawberry.field(description="Only valid token can be used")
-    number_of_request: typing.Optional[int] = strawberry.field(description="Number of request carried out by this token/client session",default=0)
-    number_of_fail_request: typing.Optional[int] = strawberry.field(description="Number of fail response message for request carried out by this token/client session",default=0)
-    response_length: typing.Optional[int] = strawberry.field(description="Average length for successful response")
+    id: typing.Optional[strawberry.ID] = strawberry.field(description="primary key (UUID), could be client generated",default=None)
+    bearer_token: str = strawberry.field(description="Bearer token")
+    valid: typing.Optional[bool] = strawberry.field(description="Only valid token can be used",default=None)
+    number_of_request: typing.Optional[int] = strawberry.field(description="Number of request carried out by this token/client session",default=None)
+    number_of_fail_request: typing.Optional[int] = strawberry.field(description="Number of fail response message for request carried out by this token/client session",default=None)
+    response_length: typing.Optional[int] = strawberry.field(description="Average length for successful response",default=None)
 
 
 
@@ -92,11 +84,15 @@ class TokenResultGQLModel:
 
     @strawberry.field(description="""returns the token""")
     async def token(self, info: strawberry.types.Info) -> TokenGQLModel:
-        return await TokenGQLModel.resolve_reference(info, self.id)
+        if self.id is not None:
+            return await TokenGQLModel.resolve_reference(info, self.id)
+        else: 
+            if self.bearer_token is not None:
+                loaders = getLoadersFromInfo(info).tokens
+                return await loaders.filter_by(bearer_token = self.bearer_token)
 
 @strawberry.mutation(description="Write new token into database")
 async def token_insert(self, info: strawberry.types.Info, token: TokenInsertGQLModel) -> TokenResultGQLModel:
-    print("this is the test",token.__dict__)
     if token.id is None:
         token.id=uuid.uuid1()
     loader = getLoadersFromInfo(info).tokens
@@ -109,9 +105,10 @@ async def token_insert(self, info: strawberry.types.Info, token: TokenInsertGQLM
 @strawberry.mutation(description="Update the token in database")
 async def token_update(self, info: strawberry.types.Info, token: TokenUpdateGQLModel) -> TokenResultGQLModel:
     loader = getLoadersFromInfo(info).tokens
+    print("place", token)
     row = await loader.update(token)
     result = TokenResultGQLModel()
-    result.id = token.id
+    result.bearer_token = token.bearer_token
     if row is None:
         result.msg = "Failed "
     else:    

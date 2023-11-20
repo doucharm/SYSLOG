@@ -41,7 +41,7 @@ app.add_middleware(
 
 @app.post("/gql", response_class=JSONResponse)
 async def GQL_Post(data: Item, request: Request):
-
+    
     logger.warning(request.headers.__dict__)
     time_start=time.time()
     gqlQuery = {"query": data.query}

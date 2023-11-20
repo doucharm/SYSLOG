@@ -23,7 +23,7 @@ async def initEngine(app: FastAPI):
 app = FastAPI(lifespan=initEngine)
 @app.get('/hello')
 def hello():
-   return {'hello': 'world'}
+    return {'hello': 'world'}
 
 
 def get_context():

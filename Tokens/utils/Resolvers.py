@@ -1,4 +1,4 @@
-import datetime
+import uuid
 from sqlalchemy import select
 from functools import cache
 
@@ -7,12 +7,12 @@ from DBModel.DBToken import Token
 def update(destination, source=None, extraValues={}):
     if source is not None:
         for name in dir(source):
+            print("names:",name)
             if name.startswith("_"):
                 continue
             value = getattr(source, name)
             if value is not None:
                 setattr(destination, name, value)
-
     for name, value in extraValues.items():
         setattr(destination, name, value)
 
@@ -26,7 +26,6 @@ def createLoader(asyncSessionMaker, DBModel):
                 rows = await session.execute(statement)
                 rows = rows.scalars()
                 row = next(rows, None)
-                print(row)
                 return row
         
         async def filter_by(self, **kwargs):
@@ -34,9 +33,7 @@ def createLoader(asyncSessionMaker, DBModel):
                 statement = baseStatement.filter_by(**kwargs)
                 rows = await session.execute(statement)
                 rows = rows.scalars()
-                print(rows)
                 row = next(rows, None)
-                print(row)
                 return row
         async def get_all(self):
             async with asyncSessionMaker() as session:
@@ -45,34 +42,22 @@ def createLoader(asyncSessionMaker, DBModel):
                 return rows
         async def insert(self, entity, extra={}):
             newdbrow = DBModel()
-            newdbrow = update(newdbrow, entity, extra)
+            update(newdbrow,entity,extra)
             async with asyncSessionMaker() as session:
                 session.add(newdbrow)
                 await session.commit()
             return newdbrow
-            
         async def update(self, entity, extraValues={}):
             async with asyncSessionMaker() as session:
-                statement = baseStatement.filter_by(id=entity.id)
+                statement = baseStatement.filter_by(bearer_token=entity.bearer_token)
                 rows = await session.execute(statement)
                 rows = rows.scalars()
                 rowToUpdate = next(rows, None)
-
                 if rowToUpdate is None:
                     return None
-
-                dochecks = hasattr(rowToUpdate, 'lastchange')             
-                checkpassed = True  
-                if (dochecks):
-                    if (entity.lastchange != rowToUpdate.lastchange):
-                        result = None
-                        checkpassed = False                        
-                    else:
-                        entity.lastchange = datetime.datetime.now()
-                if checkpassed:
-                    rowToUpdate = update(rowToUpdate, entity, extraValues=extraValues)
-                    await session.commit()
-                    result = rowToUpdate               
+                rowToUpdate = update(rowToUpdate, entity, extraValues=extraValues)
+                await session.commit()
+                result = rowToUpdate               
             return result
     return Loader()
 def createLoaders(asyncSessionMaker):
