@@ -17,15 +17,12 @@ async def initEngine(app: FastAPI):
         makeDrop=True,
         makeUp=True
     )
-
     appcontext["asyncSessionMaker"] = asyncSessionMaker
     yield
 app = FastAPI(lifespan=initEngine)
 @app.get('/hello')
 def hello():
     return {'hello': 'world'}
-
-
 def get_context():
     from utils.Resolvers import createLoadersContext
     return createLoadersContext(appcontext["asyncSessionMaker"])

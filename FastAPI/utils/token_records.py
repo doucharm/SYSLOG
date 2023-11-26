@@ -2,13 +2,14 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.schema import Column
 from sqlalchemy import Uuid, String ,Boolean , Integer,select
 import uuid
-class BaseModel(DeclarativeBase):
-    pass
-
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
+import time
+class BaseModel(DeclarativeBase):
+    pass
+
 async def startEngine(connectionstring, makeDrop=False, makeUp=True):
     asyncEngine = create_async_engine(connectionstring)
     async with asyncEngine.begin() as conn:
@@ -22,14 +23,14 @@ async def startEngine(connectionstring, makeDrop=False, makeUp=True):
                 print("Unable automaticaly create tables")
                 return None
 
-    async_sessionMaker = sessionmaker(
+    asyncSessionMaker = sessionmaker(
         asyncEngine, expire_on_commit=False, class_=AsyncSession
     )
-    return async_sessionMaker
+    print("connection,",asyncSessionMaker.__init__)
 
+    return asyncSessionMaker
 class Token(BaseModel):
     __tablename__ = "tokens"
-
     id = Column(Uuid, primary_key=True, comment="primary key", default=uuid.uuid1())
     bearer_token = Column(String, comment="Authentication bearer token")
     valid = Column(Boolean,comment = 'Only valid token are allowed futher into the database')
@@ -43,11 +44,9 @@ def ComposeConnectionString():
     password = os.environ.get("POSTGRES_PASSWORD", "example")
     database = os.environ.get("POSTGRES_DB", "data")
     hostWithPort = os.environ.get("POSTGRES_HOST", "localhost:5432")
-
     driver = "postgresql+asyncpg"  # "postgresql+psycopg2"
     connectionstring = f"{driver}://{user}:{password}@{hostWithPort}/{database}"
     return connectionstring
-
 def update(destination, source=None, extraValues={}):
         if source is not None:
             for name in dir(source):
@@ -56,7 +55,6 @@ def update(destination, source=None, extraValues={}):
                 value = getattr(source, name)
                 if value is not None:
                     setattr(destination, name, value)
-
         for name, value in extraValues.items():
             setattr(destination, name, value)
         return destination
@@ -68,36 +66,42 @@ async def get_token(session,search_str):
         row = next(rows, None)
         return row
 async def insert(session, bearer_token):
+
     newdbrow = Token()
-    entity={"bearer_token":bearer_token,'id':uuid.uuid1()}
+    entity={"bearer_token":bearer_token,'id':uuid.uuid1(),'valid':True}
     for key, value in entity.items():
         setattr(newdbrow,key,value)
     async with session:
-        session.add(newdbrow)
-        await session.commit()
+        statement = select(Token).filter_by(bearer_token=bearer_token)
+        rows = await session.execute(statement)
+        rows = rows.scalars()
+        row = next(rows, None)
+        if row is None:
+            session.add(newdbrow)
+            await session.commit()
     return newdbrow
-async def request_length_change(session,entity,added_length):
+async def response_length_change(session,bearer_token,added_length):
     async with session:
-        statement=select(Token).filter_by(bearer_token=entity.bearer_token)
+        statement=select(Token).filter_by(bearer_token=bearer_token)
         rows=await session.execute(statement)
         rows=rows.scalars()
         rowToUpdate=next(rows,None)
-        entity.request_length=(rowToUpdate.request_length*rowToUpdate.number_of_request+added_length)/(rowToUpdate.number_of_request+1)
+        entity=rowToUpdate
+        entity.response_length=(rowToUpdate.response_length*rowToUpdate.number_of_request+added_length)/(rowToUpdate.number_of_request+1)
         rowToUpdate = update(rowToUpdate, entity)
         await session.commit()
         result = rowToUpdate 
         return result
 async def token_update(session,update_function,search_str):
-    async with session:
-        statement=select(Token).filter_by(bearer_token=search_str)
-        rows=await session.execute(statement)
-        rows=rows.scalars()
-        rowToUpdate=next(rows,None)
-        entity=update_function(rowToUpdate)
-        rowToUpdate = update(rowToUpdate, entity)
-        await session.commit()
-        result = rowToUpdate 
-        return result
+    statement=select(Token).filter_by(bearer_token=search_str)
+    rows=await session.execute(statement)
+    rows=rows.scalars()
+    rowToUpdate=next(rows,None)
+    entity=update_function(rowToUpdate)
+    rowToUpdate = update(rowToUpdate, entity)
+    await session.commit()
+    result = rowToUpdate 
+    return result
 def request_count_increase(rowToUpdate):
     entity=rowToUpdate
     entity.number_of_request=rowToUpdate.number_of_request+1
@@ -107,8 +111,19 @@ def fail_request_count_increase(rowToUpdate):
     entity.number_of_fail_request=rowToUpdate.number_of_fail_request+1
     return entity
 async def check_exist(session,bearer_token):
-     if get_token(session=session,search_str=bearer_token).bearer_token is None:
-         return False 
-     else :
-         return True
-    
+    async with session:
+        pom = await get_token(session=session,search_str=bearer_token)
+        if pom :
+            return True
+        else :
+            return False
+async def process_token(session,bearer_token):
+    async with session:
+        if await check_exist(session=session,bearer_token=bearer_token)==False:
+            await insert(session=session,bearer_token=bearer_token)
+            await token_update(session=session,update_function=request_count_increase,search_str=bearer_token)
+        else:
+            await token_update(session=session,update_function=request_count_increase,search_str=bearer_token)
+
+
+            

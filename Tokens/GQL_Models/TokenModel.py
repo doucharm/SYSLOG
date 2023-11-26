@@ -22,19 +22,19 @@ class TokenGQLModel:
         return self.bearer_token
 
     @strawberry.field(description="""Request with invalid token will not be allowed to access the database""")
-    def valid(self) -> bool:
+    def valid(self) -> typing.Optional[bool]:
         return self.valid
 
     @strawberry.field(description="""Number of requests that the session has made""")
-    def number_of_request(self) -> int:
+    def number_of_request(self) -> typing.Optional[int]:
         return self.number_of_request
 
     @strawberry.field(description="""Number of request with a fail response message""")
-    def number_of_fail_request(self) -> int:
+    def number_of_fail_request(self) -> typing.Optional[int]:
         return self.number_of_fail_request
 
     @strawberry.field(description="""Average length of the responses for requests made with this token""")
-    def response_length(self) -> int:
+    def response_length(self) -> typing.Optional[int]:
         return self.response_length
 
 #################################################################

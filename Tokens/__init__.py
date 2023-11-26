@@ -35,3 +35,5 @@ async def database_mount(app:FastAPI):
     )
     app.include_router(graphql_app, prefix="/tokens/gql")
     return app
+app=FastAPI()
+app=database_mount(app)
