@@ -15,3 +15,6 @@ Captain's log:
 <br/>11/13/2023: Finishing the database for containing bearer token 
 ![Function GetAllToken return all tokens in database](image.png)
 <br /> 11/19/2023: Updating the functions with database
+
+<br /> Project Day 2.
+![image](https://github.com/doucharm/SYSLOG/assets/115186767/93446eee-d42b-4728-abaf-b6371fd58b7e)
