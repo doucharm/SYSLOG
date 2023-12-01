@@ -16,3 +16,9 @@ Captain's log:
 ![Function GetAllToken return all tokens in database](image.png)
 <br /> 11/19/2023: Updating the functions with database
 <br />11/26/2023: Functions for recording request made with token completed but still faulty. i.e When mutilple request with the token come at once it would mess up databasevs
+
+<br /> Project Day 2.
+![image](https://github.com/doucharm/SYSLOG/assets/115186767/93446eee-d42b-4728-abaf-b6371fd58b7e)
+
+<br /> 1/12: Using isolation level and while loop to queue session into the database resolve the problem above
+-> Next is to test this application on mutilple devices to test it's effectivenenss
