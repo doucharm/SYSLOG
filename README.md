@@ -15,3 +15,4 @@ Captain's log:
 <br/>11/13/2023: Finishing the database for containing bearer token 
 ![Function GetAllToken return all tokens in database](image.png)
 <br /> 11/19/2023: Updating the functions with database
+<br />11/26/2023: Functions for recording request made with token completed but still faulty. i.e When mutilple request with the token come at once it would mess up databasevs

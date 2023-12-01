@@ -11,7 +11,7 @@ class BaseModel(DeclarativeBase):
     pass
 
 async def startEngine(connectionstring, makeDrop=False, makeUp=True):
-    asyncEngine = create_async_engine(connectionstring)
+    asyncEngine = create_async_engine(connectionstring, isolation_level="SERIALIZABLE",)
     async with asyncEngine.begin() as conn:
         if makeDrop:
             await conn.run_sync(BaseModel.metadata.drop_all)
@@ -24,7 +24,7 @@ async def startEngine(connectionstring, makeDrop=False, makeUp=True):
                 return None
 
     asyncSessionMaker = sessionmaker(
-        asyncEngine, expire_on_commit=False, class_=AsyncSession
+        asyncEngine, expire_on_commit=False, class_=AsyncSession,
     )
     print("connection,",asyncSessionMaker.__init__)
 
@@ -66,20 +66,20 @@ async def get_token(session,search_str):
         row = next(rows, None)
         return row
 async def insert(session, bearer_token):
-
     newdbrow = Token()
     entity={"bearer_token":bearer_token,'id':uuid.uuid1(),'valid':True}
     for key, value in entity.items():
         setattr(newdbrow,key,value)
-    async with session:
+    async with session.begin():
         statement = select(Token).filter_by(bearer_token=bearer_token)
         rows = await session.execute(statement)
         rows = rows.scalars()
         row = next(rows, None)
         if row is None:
+            print("added at ",time.localtime())
             session.add(newdbrow)
-            await session.commit()
-    return newdbrow
+        else:
+            print('rejected ad  ',time.localtime())
 async def response_length_change(session,bearer_token,added_length):
     async with session:
         statement=select(Token).filter_by(bearer_token=bearer_token)
@@ -87,21 +87,20 @@ async def response_length_change(session,bearer_token,added_length):
         rows=rows.scalars()
         rowToUpdate=next(rows,None)
         entity=rowToUpdate
-        entity.response_length=(rowToUpdate.response_length*rowToUpdate.number_of_request+added_length)/(rowToUpdate.number_of_request+1)
+        entity.response_length=(rowToUpdate.response_length*rowToUpdate.number_of_request+added_length)/(rowToUpdate.number_of_request)
         rowToUpdate = update(rowToUpdate, entity)
         await session.commit()
         result = rowToUpdate 
-        return result
 async def token_update(session,update_function,search_str):
-    statement=select(Token).filter_by(bearer_token=search_str)
-    rows=await session.execute(statement)
-    rows=rows.scalars()
-    rowToUpdate=next(rows,None)
-    entity=update_function(rowToUpdate)
-    rowToUpdate = update(rowToUpdate, entity)
-    await session.commit()
-    result = rowToUpdate 
-    return result
+    async with session:
+        statement=select(Token).filter_by(bearer_token=search_str)
+        rows=await session.execute(statement)
+        rows=rows.scalars()
+        rowToUpdate=next(rows,None)
+        entity=update_function(rowToUpdate)
+        rowToUpdate = update(rowToUpdate, entity)
+        result = rowToUpdate 
+        await session.commit()
 def request_count_increase(rowToUpdate):
     entity=rowToUpdate
     entity.number_of_request=rowToUpdate.number_of_request+1
@@ -116,14 +115,40 @@ async def check_exist(session,bearer_token):
         if pom :
             return True
         else :
+        
             return False
-async def process_token(session,bearer_token):
-    async with session:
-        if await check_exist(session=session,bearer_token=bearer_token)==False:
+        
+
+async def process_token(session,bearer_token,status,response_length):
+    str_error=True
+    while str_error==True:
+        try:
             await insert(session=session,bearer_token=bearer_token)
             await token_update(session=session,update_function=request_count_increase,search_str=bearer_token)
+            
+        except :
+            str_error=True
+            print('Error here')
+            time.sleep(0.1)
         else:
-            await token_update(session=session,update_function=request_count_increase,search_str=bearer_token)
+            print('stop trying at ',time.localtime())
+            str_error = False
+    str_error2=True
+    while str_error2==True:
+        try:
+            if status!=200:
+                await token_update(session=session,update_function=request_count_increase,search_str=bearer_token)
+            else :
+                await response_length_change(session=session,bearer_token=bearer_token,added_length=response_length)
 
+        except :
+            str_error2=True
+            print('Error here')
+            time.sleep(0.1)
+        else:
+            print('stop trying at ',time.localtime())
+            str_error2 = False
+    
+           
 
             

@@ -43,7 +43,7 @@ async def GQL_Post(data: Item, request: Request):
     sessionMaker = await startEngine(ComposeConnectionString(),False,True)
     if len(request.headers['authorization']) > 7:
         bearer_token=request.headers['authorization'][7:]
-    logger.warning(request.headers.__dict__)
+    #logger.warning(request.headers.__dict__)
     time_start=time.time()
     gqlQuery = {"query": data.query}
     gqlQuery["variables"] = data.variables
@@ -59,12 +59,15 @@ async def GQL_Post(data: Item, request: Request):
     response=JSONResponse(content=json, status_code=resp.status)
     response_length=int({key.decode('utf-8'): value.decode('utf-8') for key, value in response.raw_headers}.get('content-length'))
     query_returned_length.observe(response_length)
-    async with sessionMaker() as session:
-        await process_token(session=session,bearer_token=bearer_token)
-        if resp.status != 200:
-            await token_update(session=session,update_function=fail_request_count_increase,search_str=bearer_token)
-        else: 
-            await response_length_change(session=session,bearer_token=bearer_token,added_length=response_length)
+
+    async with sessionMaker() as session:        
+        await process_token(session=session,bearer_token=bearer_token,status=resp.status,response_length=response_length)
+        # if resp.status != 200:
+        #     await token_update(session=session,update_function=fail_request_count_increase,search_str=bearer_token)
+        # else: 
+        #     await response_length_change(session=session,bearer_token=bearer_token,added_length=response_length)
+
+
     return response
 
 @app.get('/metric')
