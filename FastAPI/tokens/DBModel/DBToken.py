@@ -13,4 +13,5 @@ class Token(BaseModel):
     number_of_request = Column(Integer,comment='Number of request sent to the server in this session',default=0)
     number_of_fail_request = Column(Integer, comment = 'Number of fail request',default=0)
     response_length = Column(Integer,comment = 'Average length of a response in this session',default=0)
-
+    first_ip=Column(String, comment = 'The first IP address that use this token when recorded',server_default='0.0.0.0')
+    first_time=Column(DateTime, comment='The time of which is token is recorded into the database')

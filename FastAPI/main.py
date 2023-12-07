@@ -9,9 +9,35 @@ from utils.syslog_exporter import logger
 from utils.metrics import https_post_request_count,https_request_count,query_returned_length,query_waiting_time,frequency_access_from_origin
 from utils.origins import origins
 from utils.proxy import proxy
-from utils.token_records import token_update,ComposeConnectionString,startEngine,fail_request_count_increase,response_length_change,process_token
+from utils.token_records import ComposeConnectionString,startEngine,process_token
+from strawberry.fastapi import GraphQLRouter
+from tokens.GQL_Models import schema
 
-app = FastAPI()
+from contextlib import asynccontextmanager
+
+appcontext = {}
+@asynccontextmanager
+async def initEngine(app: FastAPI):
+    connectionstring = ComposeConnectionString()
+    asyncSessionMaker = await startEngine(
+        connectionstring=connectionstring,
+        makeDrop=True,
+        makeUp=True
+    )
+    appcontext["asyncSessionMaker"] = asyncSessionMaker
+    yield
+app = FastAPI(lifespan=initEngine)
+import sys
+for items in sys.path:
+    print(items)
+def get_context():
+    from tokens.utils.Resolvers import createLoadersContext
+    return createLoadersContext(appcontext["asyncSessionMaker"])
+graphql_app = GraphQLRouter(
+    schema,
+    context_getter=get_context
+)
+app.include_router(graphql_app, prefix="/tokens/gql")
 metrics=make_asgi_app()
 app.mount("/metrics",metrics)
 class Item(BaseModel):
@@ -59,15 +85,8 @@ async def GQL_Post(data: Item, request: Request):
     response=JSONResponse(content=json, status_code=resp.status)
     response_length=int({key.decode('utf-8'): value.decode('utf-8') for key, value in response.raw_headers}.get('content-length'))
     query_returned_length.observe(response_length)
-
     async with sessionMaker() as session:        
         await process_token(session=session,bearer_token=bearer_token,status=resp.status,response_length=response_length)
-        # if resp.status != 200:
-        #     await token_update(session=session,update_function=fail_request_count_increase,search_str=bearer_token)
-        # else: 
-        #     await response_length_change(session=session,bearer_token=bearer_token,added_length=response_length)
-
-
     return response
 
 @app.get('/metric')

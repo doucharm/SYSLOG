@@ -1,8 +1,11 @@
+import sys
+for item in sys.path:
+    print(item)
 import uuid
 import strawberry
 import datetime
 import typing
-from utils.Resolvers import getLoadersFromInfo
+from tokens.utils.Resolvers import getLoadersFromInfo
 @strawberry.federation.type(keys=["id"],description="""Entity representing a token of a session """,)
 class TokenGQLModel:
     @classmethod
@@ -36,6 +39,12 @@ class TokenGQLModel:
     @strawberry.field(description="""Average length of the responses for requests made with this token""")
     def response_length(self) -> typing.Optional[int]:
         return self.response_length
+    @strawberry.field(description="""The IP address that use this token when it was first recorded""")
+    def first_ip(self) -> typing.Optional[str]:
+        return self.first_ip
+    @strawberry.field(description="""The time when this token  was first recorded""")
+    def first_time(self) -> typing.Optional[datetime.datetime]:
+        return self.first_time
 
 #################################################################
 ##____________________Query session____________________________##
@@ -60,12 +69,12 @@ async def token_list(info:strawberry.types.Info) -> typing.List[TokenGQLModel]:
 @strawberry.input(description="Create a token corelate to a session")
 class TokenInsertGQLModel:
     bearer_token: str = strawberry.field(description="Bearer token")
-    id: typing.Optional[strawberry.ID] = strawberry.field(description="primary key (UUID), could be client generated",default=None)
+    id: typing.Optional[uuid.UUID] = strawberry.field(description="primary key (UUID), could be client generated",default=None)
     valid: typing.Optional[bool] = strawberry.field(description="Only valid token can be used",default=True)
     number_of_request: typing.Optional[int] = strawberry.field(description="Number of request carried out by this token/client session",default=0)
     number_of_fail_request: typing.Optional[int] = strawberry.field(description="Number of fail response message for request carried out by this token/client session",default=0)
     response_length: typing.Optional[int] = strawberry.field(description="Average length for successful response",default=0)
-
+    first_ip:typing.Optional[str] = strawberry.field(description='IP that used this token',default='0.0.0.0')
 @strawberry.input(description="Update the information of a token")
 class TokenUpdateGQLModel:
     id: typing.Optional[strawberry.ID] = strawberry.field(description="primary key (UUID), could be client generated",default=None)
@@ -95,6 +104,7 @@ class TokenResultGQLModel:
 async def token_insert(self, info: strawberry.types.Info, token: TokenInsertGQLModel) -> TokenResultGQLModel:
     if token.id is None:
         token.id=uuid.uuid1()
+    token.first_time=datetime.datetime.now()
     loader = getLoadersFromInfo(info).tokens
     row = await loader.insert(token)
     result = TokenResultGQLModel()

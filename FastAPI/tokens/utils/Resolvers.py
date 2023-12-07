@@ -2,7 +2,7 @@ import uuid
 from sqlalchemy import select
 from functools import cache
 
-from DBModel.DBToken import Token
+from tokens.DBModel.DBToken import Token
 
 def update(destination, source=None, extraValues={}):
     if source is not None:
