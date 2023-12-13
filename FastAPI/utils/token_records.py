@@ -1,9 +1,8 @@
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase,sessionmaker
 from sqlalchemy.schema import Column
 from sqlalchemy import Uuid, String ,Boolean , Integer,DateTime,select
 import uuid
 import sqlalchemy
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
 import time
@@ -12,7 +11,7 @@ class BaseModel(DeclarativeBase):
     pass
 
 async def startEngine(connectionstring, makeDrop=False, makeUp=True):
-    asyncEngine = create_async_engine(connectionstring, isolation_level="SERIALIZABLE",)
+    asyncEngine = create_async_engine(connectionstring, isolation_level="SERIALIZABLE")
     async with asyncEngine.begin() as conn:
         if makeDrop:
             await conn.run_sync(BaseModel.metadata.drop_all)
@@ -70,7 +69,7 @@ async def get_token(session,search_str):
         return row
 async def insert(session, bearer_token):
     newdbrow = Token()
-    entity={"bearer_token":bearer_token,'id':uuid.uuid1(),'valid':True}
+    entity={"bearer_token":bearer_token,'id':uuid.uuid1(),'valid':True,'first_time':datetime.datetime.now()}
     for key, value in entity.items():
         setattr(newdbrow,key,value)
     async with session.begin():
@@ -87,8 +86,11 @@ async def response_length_change(session,bearer_token,added_length):
         rows=rows.scalars()
         rowToUpdate=next(rows,None)
         entity=rowToUpdate
-        entity.response_length=(rowToUpdate.response_length*rowToUpdate.number_of_request+added_length)/(rowToUpdate.number_of_request)
+        entity.response_length=(rowToUpdate.response_length*(rowToUpdate.number_of_request-1)+added_length)/(rowToUpdate.number_of_request)
         rowToUpdate = update(rowToUpdate, entity)
+        print(entity.response_length)
+        print(entity.number_of_request)
+        print(added_length)
         await session.commit()
         result = rowToUpdate 
 async def token_update(session,update_function,search_str):

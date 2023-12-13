@@ -17,7 +17,7 @@ class TokenGQLModel:
         return result
 
     @strawberry.field(description="""Primary key""")
-    def id(self) -> strawberry.ID:
+    def id(self) -> uuid.UUID:
         return self.id
 
     @strawberry.field(description="""Bearer token for authentication""")
@@ -77,7 +77,7 @@ class TokenInsertGQLModel:
     first_ip:typing.Optional[str] = strawberry.field(description='IP that used this token',default='0.0.0.0')
 @strawberry.input(description="Update the information of a token")
 class TokenUpdateGQLModel:
-    id: typing.Optional[strawberry.ID] = strawberry.field(description="primary key (UUID), could be client generated",default=None)
+    id: typing.Optional[uuid.UUID] = strawberry.field(description="primary key (UUID), could be client generated",default=None)
     bearer_token: str = strawberry.field(description="Bearer token")
     valid: typing.Optional[bool] = strawberry.field(description="Only valid token can be used",default=None)
     number_of_request: typing.Optional[int] = strawberry.field(description="Number of request carried out by this token/client session",default=None)
@@ -88,7 +88,7 @@ class TokenUpdateGQLModel:
 
 @strawberry.type(description="result of CUD operation on token")
 class TokenResultGQLModel:
-    id: typing.Optional[strawberry.ID] = None
+    id: typing.Optional[uuid.UUID] = None
     msg: str = strawberry.field(description="result of the operation ok / fail", default="")
 
     @strawberry.field(description="""returns the token""")
@@ -105,6 +105,7 @@ async def token_insert(self, info: strawberry.types.Info, token: TokenInsertGQLM
     if token.id is None:
         token.id=uuid.uuid1()
     token.first_time=datetime.datetime.now()
+    
     loader = getLoadersFromInfo(info).tokens
     row = await loader.insert(token)
     result = TokenResultGQLModel()

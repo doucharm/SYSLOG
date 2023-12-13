@@ -84,6 +84,7 @@ async def GQL_Post(data: Item, request: Request):
             query_waiting_time.observe(time_end-time_start)
     response=JSONResponse(content=json, status_code=resp.status)
     response_length=int({key.decode('utf-8'): value.decode('utf-8') for key, value in response.raw_headers}.get('content-length'))
+    print(response_length)
     query_returned_length.observe(response_length)
     async with sessionMaker() as session:        
         await process_token(session=session,bearer_token=bearer_token,status=resp.status,response_length=response_length)
