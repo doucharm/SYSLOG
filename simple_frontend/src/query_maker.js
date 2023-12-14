@@ -128,6 +128,6 @@ export const UserQueryJSON = (id) => ({
     "variables": { "id": id }
 })
 export const Query_Call = ({id,JSONquery}) =>
-    authorizedFetch(app_dest, {
+    authorizedFetch( {
         body: JSON.stringify(JSONquery(id)),
     })
