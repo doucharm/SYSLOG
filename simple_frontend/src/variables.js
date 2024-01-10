@@ -1,4 +1,4 @@
-export const app_dest=process.env.APP_DEST ? process.env.APP_DEST : '127.0.0.1/8010'
+export const app_dest=process.env.APP_DEST ? process.env.APP_DEST : "http://127.0.0.1:8010/gql"
 export const bearer_token = process.env.BEARER_TOKEN? process.env.BEARER_TOKEN : 'token1'
 export const id_list_user = [
     "2d9dc5ca-a4a2-11ed-b9df-0242ac120003",

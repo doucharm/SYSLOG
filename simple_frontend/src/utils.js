@@ -15,7 +15,7 @@ export const authorizedFetch = (params) => {
     const newParams = { ...globalFetchParams, ...params }
     console.log(params)
     console.log(newParams)
-    const overridenPath = "http://127.0.0.1:8010/gql"
+    const overridenPath = app_dest
     return (
         fetch(overridenPath, newParams) 
     )

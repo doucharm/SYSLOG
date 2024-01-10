@@ -5,16 +5,26 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app,generate_latest
 import time
-from utils.syslog_exporter import logger
-from utils.metrics import https_post_request_count,https_request_count,query_returned_length,query_waiting_time,frequency_access_from_origin
+import utils.variables as variables
+from utils.syslog_exporter import logger,request_log
+from utils.metrics import increase_count,query_returned_length,query_waiting_time
 from utils.origins import origins
 from utils.proxy import proxy
-from utils.token_records import ComposeConnectionString,startEngine,process_token
+from tokens.DBModel import ComposeConnectionString,startEngine
+from utils.token_records import process_token,check_token_validity
 from strawberry.fastapi import GraphQLRouter
 from tokens.GQL_Models import schema
-
+import re
 from contextlib import asynccontextmanager
-
+def GetHeaderData(headers):
+    pattern = r'^Bearer\s.*'
+    if len(headers['authorization']) > 7 and bool(re.match(pattern=pattern,string=headers['authorization'])):
+        bearer_token=headers['authorization'][7:]
+    if 'X-Forwarded-For' in headers:
+        request_ip=headers['X-Forwarded-For']
+    else: 
+        request_ip=headers['origin']
+    return [bearer_token,request_ip]
 appcontext = {}
 @asynccontextmanager
 async def initEngine(app: FastAPI):
@@ -27,9 +37,7 @@ async def initEngine(app: FastAPI):
     appcontext["asyncSessionMaker"] = asyncSessionMaker
     yield
 app = FastAPI(lifespan=initEngine)
-import sys
-for items in sys.path:
-    print(items)
+
 def get_context():
     from tokens.utils.Resolvers import createLoadersContext
     return createLoadersContext(appcontext["asyncSessionMaker"])
@@ -43,20 +51,6 @@ app.mount("/metrics",metrics)
 class Item(BaseModel):
     query: str
     variables: dict = None
-class Info():
-    method:str
-    url:str
-    client:str
-    port:str
-    def __init__(self, method:str,url:str ,client:str,port:str):
-        print(method,url,client,port,sep="  ")
-        self.method=method
-        self.url=url
-        self.client=client
-        self.port=port
-        
-
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -67,28 +61,33 @@ app.add_middleware(
 @app.post("/gql", response_class=JSONResponse)
 async def GQL_Post(data: Item, request: Request):
     sessionMaker = await startEngine(ComposeConnectionString(),False,True)
-    if len(request.headers['authorization']) > 7:
-        bearer_token=request.headers['authorization'][7:]
-    #logger.warning(request.headers.__dict__)
-    time_start=time.time()
-    gqlQuery = {"query": data.query}
-    gqlQuery["variables"] = data.variables
-    info=Info(request.method,request.url,request.headers["origin"],request.client.port)
-    https_request_count.inc()
-    https_post_request_count.inc()
-    frequency_access_from_origin.labels(info.client).inc()
-    async with aiohttp.ClientSession() as session:
-        async with session.post(proxy, json=gqlQuery, headers={}) as resp:
-            json = await resp.json()
-            time_end=time.time()
-            query_waiting_time.observe(time_end-time_start)
-    response=JSONResponse(content=json, status_code=resp.status)
-    response_length=int({key.decode('utf-8'): value.decode('utf-8') for key, value in response.raw_headers}.get('content-length'))
-    print(response_length)
-    query_returned_length.observe(response_length)
-    async with sessionMaker() as session:        
-        await process_token(session=session,bearer_token=bearer_token,status=resp.status,response_length=response_length)
-    return response
+    bearer_token=None
+    request_ip=None
+    status_code=[400]
+    [bearer_token,request_ip]=GetHeaderData(request.headers)
+    if await check_token_validity(session=sessionMaker(),bearer_token=bearer_token,ip_address=request_ip,status_code=status_code):
+        time_start=time.time()
+        gqlQuery = {"query": data.query}
+        gqlQuery["variables"] = data.variables
+        increase_count(request.headers['origin'])
+        async with aiohttp.ClientSession() as session:
+            async with session.post(proxy, json=gqlQuery, headers={}) as resp:
+                json = await resp.json()
+                time_end=time.time()
+                query_waiting_time.observe(time_end-time_start)
+        response=JSONResponse(content=json, status_code=resp.status)
+        if( resp.status!=400):
+            request_log(bearer_token=bearer_token,ip_address=request_ip,status_code=resp.status)
+            return JSONResponse(content=json,status_code=418 if variables.status_block else resp.status)
+        response_length=int({key.decode('utf-8'): value.decode('utf-8') for key, value in response.raw_headers}.get('content-length'))
+        query_returned_length.observe(response_length)
+        async with sessionMaker() as session:        
+            await process_token(session=session,bearer_token=bearer_token,status=resp.status,response_length=response_length,first_ip=request_ip)
+        return response
+    else: 
+        request_log(bearer_token=bearer_token,ip_address=request_ip,status_code=status_code[0])
+        response=JSONResponse(content=None,status_code=418 if variables.status_block else status_code[0])
+        return response
 
 @app.get('/metric')
 async def get_metrics():

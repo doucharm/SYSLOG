@@ -26,6 +26,16 @@ services:
     build: 
       context: ./FastAPI
       dockerfile: ./Dockerfile
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=example
+      - POSTGRES_DB=data
+      - ALLOW_VPN=False
+      - POSTGRES_HOST=postgres:5432
+      - DATABASE_IP=http://localhost:31120/gql
+      - LOG_SERVER=localhost
+      - LOG_PORT=514
+      - TOKEN_LIFE_LIMIT=3600
     ports:
      - 8010:8010
   syslog-ng:
@@ -35,6 +45,41 @@ services:
       - 601:601
       - 514:514/udp
     restart: unless-stopped
+  postgres:
+    image: postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=example
+      - POSTGRES_DB=data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+    restart: on-failure:3
+    ports:
+      - 5432:5432
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=anoyne@anywhere.com
+      - PGADMIN_DEFAULT_PASSWORD=example
+    healthcheck:
+      test: ["CMD", "wget", "-O", "-", "http://localhost:80/misc/ping"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+    ports:
+      - 31122:80
+  web:
+    build: ./simple_frontend
+    command: npm run dev
+    volumes:
+      - .:/usr/app/
+      - /usr/app/node_modules
+    ports:
+      - "3000:3000"
 volumes:
   prom_data:
-

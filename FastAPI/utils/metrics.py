@@ -10,3 +10,7 @@ frequency_access_from_origin = Counter("frequency_access_from_origin",'Number of
 from .origins import origins
 for origin in origins:
     frequency_access_from_origin.labels(client = origin)
+def increase_count(origin):
+        https_request_count.inc()
+        https_post_request_count.inc()
+        frequency_access_from_origin.labels(origin).inc()
