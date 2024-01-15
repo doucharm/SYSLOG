@@ -8,12 +8,11 @@ import time
 import utils.variables as variables
 from utils.syslog_exporter import logger,request_log
 from utils.metrics import increase_count,query_returned_length,query_waiting_time
-from utils.origins import origins
-from utils.proxy import proxy
+from utils.variables import database_ip,origins
 from tokens.DBModel import ComposeConnectionString,startEngine
 from utils.token_records import process_token,check_token_validity
 from strawberry.fastapi import GraphQLRouter
-from tokens.GQL_Models import schema
+from tokens.GQL_Models.Schema import schema
 import re
 from contextlib import asynccontextmanager
 def GetHeaderData(headers):
@@ -65,18 +64,19 @@ async def GQL_Post(data: Item, request: Request):
     request_ip=None
     status_code=[400]
     [bearer_token,request_ip]=GetHeaderData(request.headers)
+    logger.info("user "+ bearer_token)
     if await check_token_validity(session=sessionMaker(),bearer_token=bearer_token,ip_address=request_ip,status_code=status_code):
         time_start=time.time()
         gqlQuery = {"query": data.query}
         gqlQuery["variables"] = data.variables
         increase_count(request.headers['origin'])
         async with aiohttp.ClientSession() as session:
-            async with session.post(proxy, json=gqlQuery, headers={}) as resp:
+            async with session.post(database_ip, json=gqlQuery, headers={}) as resp:
                 json = await resp.json()
                 time_end=time.time()
                 query_waiting_time.observe(time_end-time_start)
         response=JSONResponse(content=json, status_code=resp.status)
-        if( resp.status!=400):
+        if( resp.status!=200):
             request_log(bearer_token=bearer_token,ip_address=request_ip,status_code=resp.status)
             return JSONResponse(content=json,status_code=418 if variables.status_block else resp.status)
         response_length=int({key.decode('utf-8'): value.decode('utf-8') for key, value in response.raw_headers}.get('content-length'))

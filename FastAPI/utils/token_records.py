@@ -104,11 +104,15 @@ async def check_token_validity(session,bearer_token,ip_address,status_code):
         pom=await get_token(session=session,search_str=bearer_token)
         if pom :
 
-            if pom.first_ip!=ip_address and not utils.variables.allow_vpn:
+            if pom.first_ip!=ip_address and not utils.variables.allow_vpn=='True':
                 status_code[0]=429
+                print('No pass')
                 return False
+            else :
+                print('passed vpn check')
+                print(str(bool(utils.variables.allow_vpn)))
             time_diffirence=datetime.datetime.now()-pom.first_time
-            if time_diffirence.total_seconds() > utils.variables.token_life_limit:
+            if time_diffirence.total_seconds() > int(utils.variables.token_life_limit):
                 status_code[0]=401
                 return False
         return True

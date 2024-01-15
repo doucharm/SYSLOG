@@ -32,10 +32,12 @@ services:
       - POSTGRES_DB=data
       - ALLOW_VPN=False
       - POSTGRES_HOST=postgres:5432
-      - DATABASE_IP=http://localhost:31120/gql
+      - DATABASE_IP=http://gql_ug:8000/gql
       - LOG_SERVER=localhost
       - LOG_PORT=514
       - TOKEN_LIFE_LIMIT=3600
+      - LOG_SERVER=syslog-ng
+      - LOG_PORT=514g
     ports:
      - 8010:8010
   syslog-ng:
@@ -58,7 +60,7 @@ services:
       retries: 5
     restart: on-failure:3
     ports:
-      - 5432:5432
+      - 5433:5432
 
   pgadmin:
     image: dpage/pgadmin4
@@ -72,14 +74,6 @@ services:
       timeout: 10s
       retries: 5
     ports:
-      - 31122:80
-  web:
-    build: ./simple_frontend
-    command: npm run dev
-    volumes:
-      - .:/usr/app/
-      - /usr/app/node_modules
-    ports:
-      - "3000:3000"
+      - 31125:80
 volumes:
   prom_data:
