@@ -1,7 +1,8 @@
-import datetime
+
 from sqlalchemy.schema import Column
-from sqlalchemy import Uuid, String, DateTime ,Boolean , Integer
+from sqlalchemy import Uuid, String, DateTime ,Boolean , Integer,ForeignKey
 from . import BaseModel
+from sqlalchemy.orm import relationship
 import uuid
 
 class Token(BaseModel):
@@ -15,3 +16,5 @@ class Token(BaseModel):
     response_length = Column(Integer,comment = 'Average length of a response in this session',default=0)
     first_ip=Column(String, comment = 'The first IP address that use this token when recorded',server_default='0.0.0.0')
     first_time=Column(DateTime, comment='The time of which is token is recorded into the database')
+    user_id = Column(ForeignKey("users.id"),index=True)
+    user= relationship('User',back_populates="used_token")

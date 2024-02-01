@@ -1,12 +1,13 @@
-import sys
-for item in sys.path:
-    print(item)
 import uuid
 import strawberry
 import datetime
 import typing
 from tokens.utils.Resolvers import getLoadersFromInfo
 from .GraphPermisson import OnlyForAuthentized
+
+UserGQLModel = typing.Annotated["UserGQLModel", strawberry.lazy(".UserModel")]
+
+
 @strawberry.federation.type(keys=["id"],description="""Entity representing a token of a session """,)
 class TokenGQLModel:
     @classmethod
@@ -46,7 +47,13 @@ class TokenGQLModel:
     @strawberry.field(description="""The time when this token  was first recorded""")
     def first_time(self) -> typing.Optional[datetime.datetime]:
         return self.first_time
-
+    @strawberry.field(description="""The user that requested this token to use""")
+    def user_id(self) -> typing.Optional[uuid.UUID]:
+        return self.user_id
+    async def user(self, info: strawberry.types.Info) -> typing.Optional["UserGQLModel"]:
+        loader = getLoadersFromInfo(info).users
+        result = await loader.filter_by(user_id=self.id)
+        return result
 #################################################################
 ##____________________Query session____________________________##
 #################################################################
@@ -76,6 +83,7 @@ class TokenInsertGQLModel:
     number_of_fail_request: typing.Optional[int] = strawberry.field(description="Number of fail response message for request carried out by this token/client session",default=0)
     response_length: typing.Optional[int] = strawberry.field(description="Average length for successful response",default=0)
     first_ip:typing.Optional[str] = strawberry.field(description='IP that used this token',default='0.0.0.0')
+    user_id: typing.Optional[uuid.UUID] = strawberry.field(description='The identification of the client that own this token',default="")
 @strawberry.input(description="Update the information of a token")
 class TokenUpdateGQLModel:
     id: typing.Optional[uuid.UUID] = strawberry.field(description="primary key (UUID), could be client generated",default=None)
@@ -106,7 +114,7 @@ async def token_insert(self, info: strawberry.types.Info, token: TokenInsertGQLM
     if token.id is None:
         token.id=uuid.uuid1()
     token.first_time=datetime.datetime.now()
-    
+
     loader = getLoadersFromInfo(info).tokens
     row = await loader.insert(token)
     result = TokenResultGQLModel()

@@ -5,10 +5,9 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app,generate_latest
 import time
-import utils.variables as variables
 from utils.syslog_exporter import logger,request_log
 from utils.metrics import increase_count,query_returned_length,query_waiting_time
-from utils.variables import database_ip,origins
+from utils.variables import database_ip,origins,status_block
 from tokens.DBModel import ComposeConnectionString,startEngine
 from utils.token_records import process_token,check_token_validity
 from strawberry.fastapi import GraphQLRouter
@@ -47,7 +46,7 @@ graphql_app = GraphQLRouter(
 app.include_router(graphql_app, prefix="/tokens/gql")
 metrics=make_asgi_app()
 app.mount("/metrics",metrics)
-class Item(BaseModel):
+class Item( BaseModel ):
     query: str
     variables: dict = None
 app.add_middleware(
@@ -64,7 +63,6 @@ async def GQL_Post(data: Item, request: Request):
     request_ip=None
     status_code=[400]
     [bearer_token,request_ip]=GetHeaderData(request.headers)
-    logger.info("user "+ bearer_token)
     if await check_token_validity(session=sessionMaker(),bearer_token=bearer_token,ip_address=request_ip,status_code=status_code):
         time_start=time.time()
         gqlQuery = {"query": data.query}
@@ -78,22 +76,22 @@ async def GQL_Post(data: Item, request: Request):
         response=JSONResponse(content=json, status_code=resp.status)
         if( resp.status!=200):
             request_log(bearer_token=bearer_token,ip_address=request_ip,status_code=resp.status)
-            return JSONResponse(content=json,status_code=418 if variables.status_block else resp.status)
+            return JSONResponse(content=json,status_code=418 if str(status_block)=='True' else resp.status)
         response_length=int({key.decode('utf-8'): value.decode('utf-8') for key, value in response.raw_headers}.get('content-length'))
         query_returned_length.observe(response_length)
-        async with sessionMaker() as session:        
-            await process_token(session=session,bearer_token=bearer_token,status=resp.status,response_length=response_length,first_ip=request_ip)
+        if bearer_token is not None: 
+            async with sessionMaker() as session:        
+                await process_token(session=session,bearer_token=bearer_token,status=resp.status,response_length=response_length,first_ip=request_ip)
         return response
     else: 
         request_log(bearer_token=bearer_token,ip_address=request_ip,status_code=status_code[0])
-        response=JSONResponse(content=None,status_code=418 if variables.status_block else status_code[0])
+        response=JSONResponse(content=None,status_code=418 if str(status_block)=='True' else status_code[0])
         return response
 
 @app.get('/metric')
 async def get_metrics():
     return Response(
         content= generate_latest(),
-        media_type='text/plain'
-    )
+        media_type='text/plain')
 
 

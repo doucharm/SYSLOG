@@ -104,7 +104,7 @@ async def check_token_validity(session,bearer_token,ip_address,status_code):
         pom=await get_token(session=session,search_str=bearer_token)
         if pom :
 
-            if pom.first_ip!=ip_address and not utils.variables.allow_vpn=='True':
+            if pom.first_ip!=ip_address and not str(utils.variables.allow_vpn)=='True':
                 status_code[0]=429
                 print('No pass')
                 return False

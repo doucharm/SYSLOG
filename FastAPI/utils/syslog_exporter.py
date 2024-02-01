@@ -11,7 +11,7 @@ formatter = logging.Formatter(
     fmt='%(asctime)s.%(msecs)03d\t%(levelname)s:\t%(message)s', 
     datefmt='%Y-%m-%dT%I:%M:%S')
 from .variables import log_port,log_server
-syslog = logging.handlers.SysLogHandler(address=("syslog-ng", 514))
+syslog = logging.handlers.SysLogHandler()
 syslog.setFormatter(formatter)
 logger = logging.getLogger()
 logger.addHandler(syslog)
@@ -20,5 +20,5 @@ def request_log(bearer_token:str='N/A',ip_address:str='N/A',status_code:int = 40
         message = http.client.responses[status_code]
         time=datetime.datetime.now()
         print("Request from IP %s with authentication token %s return with code %i : %s at %s" %( ip_address,bearer_token,status_code,message,str(time)))
-        logger.debug("Request from IP %s with authentication token %s return with code %i : %s at %s",
-                   ip_address,bearer_token,status_code,message,str(time))
+        #logger.debug("Request from IP %s with authentication token %s return with code %i : %s at %s",
+                  # ip_address,bearer_token,status_code,message,str(time))
