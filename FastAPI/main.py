@@ -47,9 +47,18 @@ metrics=make_asgi_app() #vytvořit Prometheus instance na sledování a zasílan
 app.mount("/metrics",metrics)
 class Item( BaseModel ):
     query: str
-    variables: dict = None
+    variables: dict = None #ViolationModel může záznamovat ty variables (id) pokud chce zjíští,kterého objektů útočník požadá informace 
 app.add_middleware(CORSMiddleware,allow_origins=origins,allow_credentials=True,allow_methods=["*"],allow_headers=["*"])
 #sentinel=authenticationMiddleware.createAuthentizationSentinel()
+"""
+This function intercept a user's request midway to process before sending a copie of it to the actual database. Reply for the request is then processed and return back to the user
+    Params:
+        data is the JSON query
+        request is the request made by user
+    Return:
+        Reply from the database
+
+"""
 @app.post("/gql", response_class=JSONResponse)
 async def GQL_Post(data: Item, request: Request):
     #sentinel.authenticate(request=request)
@@ -75,20 +84,20 @@ async def GQL_Post(data: Item, request: Request):
                 response=JSONResponse(content=json, status_code=resp.status)
             except Exception as e:
                 response=JSONResponse(content=json, status_code=500) #v případě se nedosahnout do serveru
-        response_length=int({key.decode('utf-8'): value.decode('utf-8') for key, value in response.raw_headers}.get('content-length'))
+        response_length=int({key.decode('utf-8'): value.decode('utf-8') for key, value in response.raw_headers}.get('content-length')) #dekóduje a sbírá délka odpovědi
         query_returned_length.observe(response_length)
         if bearer_token is not None: 
             async with sessionMaker() as session: 
-                await process_user(session=session,user_id=user_id)     
+                await process_user(session=session,user_id=user_id)  #zjištit, je-li uživatel v databázi
+                #zpracovává JWT na základě odpovědí
                 await process_token(session=session,bearer_token=bearer_token,status=response.status_code,response_length=response_length,first_ip=request_ip,user_id=user_id)
         if( response.status_code!=200):
-            request_log(bearer_token=bearer_token,ip_address=request_ip,status_code=response.status_code)
+            request_log(bearer_token=bearer_token,ip_address=request_ip,status_code=response.status_code) #log, když zachytí chybní odpověď
             return JSONResponse(content=json,status_code=418 if str(status_block)=='True' else response.status_code)
-       
         return response
     else: 
         request_log(bearer_token=bearer_token,ip_address=request_ip,status_code=status_code[0])
-        response=JSONResponse(content=None,status_code=418 if str(status_block)=='True' else status_code[0])
+        response=JSONResponse(content=None,status_code=418 if str(status_block)=='True' else status_code[0]) #když JWT je od dalšího zdroje nebo už není platné
         return response
 
 @app.get('/metric')

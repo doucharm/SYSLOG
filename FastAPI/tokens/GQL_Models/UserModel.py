@@ -42,7 +42,6 @@ class UserGQLModel:
         return self.number_of_unauthorized_request
     @strawberry.field(description="""List of JWT requested by this user""",)
     async def used_token(self, info: strawberry.types.Info) -> typing.List["TokenGQLModel"]:
-        print('this is called')
         loader = getLoadersFromInfo(info).tokens
         result = await loader.filter_by_list(user_id=self.id)
         return result
@@ -96,7 +95,6 @@ class UserResultGQLModel:
 async def user_insert(self, info: strawberry.types.Info, user: UserInsertGQLModel) -> UserResultGQLModel:
     if user.id is None:
         user.id=uuid.uuid1()
-    print('user before insert',user)
     loader = getLoadersFromInfo(info).users
     row = await loader.insert(user)
     result = UserResultGQLModel()

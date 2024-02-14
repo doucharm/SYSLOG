@@ -1,6 +1,6 @@
-from sqlalchemy.orm import DeclarativeBase,relationship
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.schema import Column
-from sqlalchemy import Uuid, String ,Boolean , Integer,DateTime,select,ForeignKey
+from sqlalchemy import Uuid, String ,Boolean , Integer,DateTime,select
 import uuid
 import time
 import datetime
@@ -81,6 +81,24 @@ def fail_request_count_increase(rowToUpdate):
     entity.number_of_fail_request=rowToUpdate.number_of_fail_request+1
     return entity
 async def process_token(session,bearer_token,status,response_length,first_ip,user_id):
+    """
+    Process a bearer token by inserting data into the database and updating related information.
+
+    Parameters:
+    - session (sqlalchemy.orm.Session): The SQLAlchemy session to interact with the database.
+    - bearer_token (str): The bearer token to be processed.
+    - status (int): The HTTP status code of the associated request.
+    - response_length (int): The length of the response received.
+    - first_ip (str): The IP address from which the request originated.
+    - user_id (int): The ID of the user associated with the token.
+
+    Returns:
+    None
+
+    This function processes a bearer token by attempting to insert data into the database and updating
+    related information. It retries up to 10 times in case of errors during database operations.
+
+    """
     str_error=True
     limit=0
     while str_error==True and limit<10: #skouší změnit data v databáze o 10 pokusů
@@ -108,6 +126,22 @@ async def process_token(session,bearer_token,status,response_length,first_ip,use
         else:
             str_error2 = False
 async def check_token_validity(session,bearer_token,ip_address,status_code):
+    """
+    Check the validity of a bearer token by querying the database.
+
+    Parameters:
+    - session (sqlalchemy.orm.Session): The SQLAlchemy session to interact with the database.
+    - bearer_token (str): The bearer token to be checked for validity.
+    - ip_address (str): The IP address from which the request originated.
+    - status_code (list): A list containing the HTTP status code to be updated based on the token validity.
+
+    Returns:
+    bool: True if the token is valid; False otherwise.
+
+    This function queries the database to check the validity of a bearer token. It verifies the token's
+    originating IP address and checks whether it has exceeded its specified lifespan. If the token is
+    invalid, it updates the 'status_code' list with the appropriate HTTP status code.
+    """
     async with session:
         pom=await get_token(session=session,search_str=bearer_token)
         if pom :

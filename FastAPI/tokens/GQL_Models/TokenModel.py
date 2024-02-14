@@ -125,7 +125,6 @@ async def token_insert(self, info: strawberry.types.Info, token: TokenInsertGQLM
 @strawberry.mutation(description="Update the token in database")
 async def token_update(self, info: strawberry.types.Info, token: TokenUpdateGQLModel) -> TokenResultGQLModel:
     loader = getLoadersFromInfo(info).tokens
-    print("place", token)
     row = await loader.update(token)
     result = TokenResultGQLModel()
     result.bearer_token = token.bearer_token

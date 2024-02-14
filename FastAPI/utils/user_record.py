@@ -24,6 +24,21 @@ def update(destination, source=None, extraValues={}):
             setattr(destination, name, value)
         return destination
 async def add_user(session,user_id):#zjiští existenci uživatele v databázi a pokud není tak přidáme mu 
+    """
+    Check if the user with the given user_id exists in the 'User' table.
+    If not, create a new user with default values.
+
+    Parameters:
+    - session (sqlalchemy.orm.Session): The SQLAlchemy session to interact with the database.
+    - user_id (int): The ID of the user to be checked or created.
+
+    Returns:
+    None
+
+    This block of code uses a SQLAlchemy session to execute a query checking if a user with the specified
+    'user_id' already exists in the 'User' table. If the user does not exist, a new user is created
+    with default values
+    """
     async with session.begin():
         statement=select(User).filter_by(id=user_id)
         rows =await session.execute (statement)
@@ -34,9 +49,27 @@ async def add_user(session,user_id):#zjiští existenci uživatele v databázi a
             new_user={'id':user_id,'valid':True}
             for key, value in new_user.items():
                 setattr(new_row,key,value)
-            print(new_row.id)
             session.add(new_row)
 async def process_user(session,user_id):
+    """
+    Process user by attempting to add the user to the session.
+
+    Parameters:
+    - session (sqlalchemy.orm.Session): The SQLAlchemy session to interact with the database.
+    - user_id (int): The ID of the user to be processed.
+
+    Returns:
+    None
+
+    This function attempts to add a user to the database session, with a maximum of 10 attempts.
+    If the addition is successful, the function sets `updated` to True; otherwise, it catches exceptions,
+    prints an error message, and retries after a short delay.
+
+    Example Usage:
+    ```python
+    await process_user(session, 123)
+    ```
+    """
     updated=False
     i=0
     while not updated and i <10: #ozmezit počet pokusů do 10
@@ -44,7 +77,6 @@ async def process_user(session,user_id):
             await add_user(session,user_id)
         except Exception as e:
             updated=False
-            print(e)
             time.sleep(0.1)
             i=i+1
         else:

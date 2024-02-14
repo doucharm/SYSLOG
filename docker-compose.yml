@@ -29,7 +29,7 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=example
-      - POSTGRES_DB=data
+      - POSTGRES_DB=postgres
       - ALLOW_VPN=False
       - POSTGRES_HOST=postgres:5432
       - DATABASE_IP=http://gql_ug:8000/gql

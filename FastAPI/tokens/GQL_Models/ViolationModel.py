@@ -80,7 +80,6 @@ async def violation_insert(self, info: strawberry.types.Info, violation: Violati
         violation.id=uuid.uuid1()
     if not violation.access_time:
         violation.access_time=datetime.datetime.now()
-    print(violation)
     loader = getLoadersFromInfo(info).violations
     row = await loader.insert(violation)
     result = ViolationResultGQLModel()

@@ -30,7 +30,6 @@ async def startEngine(connectionstring, makeDrop=False, makeUp=True):
 
 import os
 def ComposeConnectionString():
-    print('test 1')
     user = os.environ.get("POSTGRES_USER", "postgres")
     password = os.environ.get("POSTGRES_PASSWORD", "example")
     database = os.environ.get("POSTGRES_DB", "postgres")

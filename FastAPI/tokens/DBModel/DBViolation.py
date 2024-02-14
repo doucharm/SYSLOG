@@ -1,6 +1,6 @@
 
 from sqlalchemy.schema import Column
-from sqlalchemy import Uuid, String, DateTime ,Boolean , Integer,ForeignKey
+from sqlalchemy import Uuid, String, DateTime ,ForeignKey
 from . import BaseModel
 from sqlalchemy.orm import relationship
 import datetime

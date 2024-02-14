@@ -8,7 +8,6 @@ from tokens.DBModel.DBViolation import Violation
 def update(destination, source=None, extraValues={}):
     if source is not None:
         for name in dir(source):
-            print("names:",name)
             if name.startswith("_"):
                 continue
             value = getattr(source, name)
@@ -35,7 +34,6 @@ def createLoader(asyncSessionMaker, DBModel):
                 rows = await session.execute(statement)
                 rows = rows.scalars()
                 row = next(rows, None)
-                print('row by tokens',row)
                 return row
         async def filter_by_list(self, **kwargs):
             async with asyncSessionMaker() as session:
@@ -50,9 +48,7 @@ def createLoader(asyncSessionMaker, DBModel):
                 return rows
         async def insert(self, entity, extra={}):
             newdbrow = DBModel()
-            print('insert is called here')
             update(newdbrow,entity,extra)
-            print('new dbrow',newdbrow)
             async with asyncSessionMaker() as session:
                 session.add(newdbrow)
                 await session.commit()
