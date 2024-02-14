@@ -52,7 +52,7 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=example
-      - POSTGRES_DB=data
+      - POSTGRES_DB=postgres
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
       interval: 60s
@@ -66,7 +66,7 @@ services:
     image: dpage/pgadmin4
     restart: always
     environment:
-      - PGADMIN_DEFAULT_EMAIL=anoyne@anywhere.com
+      - PGADMIN_DEFAULT_EMAIL=anyone@anywhere.com
       - PGADMIN_DEFAULT_PASSWORD=example
     healthcheck:
       test: ["CMD", "wget", "-O", "-", "http://localhost:80/misc/ping"]
@@ -75,5 +75,14 @@ services:
       retries: 5
     ports:
       - 31125:80
+
+  app:
+    build: 
+      context: ./simple_frontend
+      dockerfile: ./Dockerfile
+    ports:
+      - '3452:3452'
+    environment:
+      - PORT=3452
 volumes:
   prom_data:

@@ -1,6 +1,5 @@
-from typing import List
 from sqlalchemy.schema import Column
-from sqlalchemy import Uuid, String, DateTime ,Boolean , Integer
+from sqlalchemy import Uuid,Boolean , Integer
 from sqlalchemy.orm import relationship
 from . import BaseModel
 import uuid

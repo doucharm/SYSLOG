@@ -1,11 +1,11 @@
-import { app_dest,bearer_token } from "./variables"
+import { app_dest,bearer_token} from "./variables"
+
 const globalFetchParams = {
     URL:app_dest,
     method: 'POST',
     headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer '+ bearer_token
-
+        'Authorization': 'Bearer '+ bearer_token,
     },
     cache: 'no-cache',
     redirect: 'follow',
