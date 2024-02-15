@@ -1,5 +1,11 @@
 # SYSLOG
-Monitor GQL endpoint requests using FastAPI and Prometheus to scrape metrics and reverse proxy configurated by NGINX
+Monitor GQL endpoint requests using FastAPI and Prometheus to scrape metrics, record and process used JWT to ensure only safe request are processed by database
+
+How to use:
+   This project is a seperate aplication to the actual database and it purpose is to stand before the user and the server, providing necessary filtering for incoming request and processing metadata coming back from the server to the client also know as a reverse proxy 
+   Front-end aplication will make all requests to the address of fastapi:8010
+   Server endpoint will be positioned in DATABASE_IP
+   
 Captain's log:
 <br />
 -10/4/2023 : Created and public the GitHub respository for the project.
@@ -22,3 +28,15 @@ Captain's log:
 
 <br /> 1/12: Using isolation level and while loop to queue session into the database resolve the problem above
 -> Next is to test this application on mutilple devices to test it's effectivenenss
+<br /> 14/12: Simple frontend created to sending test request for monitoring
+<br /> 10/1 Token life limit is added to control how long a JWT will be valid for
+<br /> Project Day 3:
+     Only MONITORING UNAUTHORIZED REQUEST unfinished
+<br /> 20/1 Adding users table to keep track of how many tokens a user has
+<br /> 1/2 Violations is added to the database 
+![image](https://github.com/doucharm/SYSLOG/assets/115186767/845385f5-ea7a-42fb-b6d4-d146ec6eaa76)
+Violation is for database admin to record unauthorized request --> there is option to get all unauthorized request made by the user
+<br /> 12-14/2 Finishing up code and adding comment
+Generating documents and final touch up
+
+
