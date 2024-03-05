@@ -9,7 +9,7 @@ logging.basicConfig(
 formatter = logging.Formatter(
     fmt='\t%(levelname)s:\t%(message)s')
 from .variables import log_port,log_server
-syslog = logging.handlers.SysLogHandler(address=("syslog-ng", 514))
+syslog = logging.handlers.SysLogHandler()
 syslog.setFormatter(formatter)
 logger = logging.getLogger()
 logger.addHandler(syslog)

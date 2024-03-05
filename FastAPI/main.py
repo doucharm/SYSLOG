@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app,generate_latest
 import time
 from utils.syslog_exporter import logger,request_log
-from utils.metrics import increase_count,query_returned_length,query_waiting_time
+from utils.metrics import data_exporter
 from utils.variables import database_ip,origins,status_block
 from tokens.DBModel import ComposeConnectionString,startEngine
 from utils.token_records import process_token,check_token_validity
@@ -49,6 +49,7 @@ class Item( BaseModel ):
     query: str
     variables: dict = None #ViolationModel může záznamovat ty variables (id) pokud chce zjíští,kterého objektů útočník požadá informace 
 app.add_middleware(CORSMiddleware,allow_origins=origins,allow_credentials=True,allow_methods=["*"],allow_headers=["*"])
+
 #sentinel=authenticationMiddleware.createAuthentizationSentinel()
 """
 This function intercept a user's request midway to process before sending a copie of it to the actual database. Reply for the request is then processed and return back to the user
@@ -57,7 +58,6 @@ This function intercept a user's request midway to process before sending a copi
         request is the request made by user
     Return:
         Reply from the database
-
 """
 @app.post("/gql", response_class=JSONResponse)
 async def GQL_Post(data: Item, request: Request):
@@ -69,10 +69,10 @@ async def GQL_Post(data: Item, request: Request):
     status_code=[400]
     [bearer_token,request_ip,user_id]=GetHeaderData(request.headers) #sbírat potřebné informace ze dotazní záhlaví
     if await check_token_validity(session=sessionMaker(),bearer_token=bearer_token,ip_address=request_ip,status_code=status_code): #provedení kontroly živostnost a zdroje JWT
+        request_duration=None
         time_start=time.time()
         gqlQuery = {"query": data.query}
         gqlQuery["variables"] = data.variables #formulovat další kopie přijetého dotazu 
-        increase_count(request.headers['origin']) #Prometheus monitorování
         json=None
         response=None
         async with aiohttp.ClientSession() as session:
@@ -80,17 +80,16 @@ async def GQL_Post(data: Item, request: Request):
                 async with session.post(database_ip, json=gqlQuery, headers={}) as resp: #vysílat dotaz dále do vnitřní databáze
                     json = await resp.json()
                     time_end=time.time()
-                    query_waiting_time.observe(time_end-time_start)
+                    request_duration=time_end-time_start
                 response=JSONResponse(content=json, status_code=resp.status)
             except Exception as e:
                 response=JSONResponse(content=json, status_code=500) #v případě se nedosahnout do serveru
         response_length=int({key.decode('utf-8'): value.decode('utf-8') for key, value in response.raw_headers}.get('content-length')) #dekóduje a sbírá délka odpovědi
-        query_returned_length.observe(response_length)
+        data_exporter(request_duration=request_duration,respone_length=response_length,success=True,origin=request_ip,method='POST',media_type=request.headers.get('content-type'),referer=request.headers.get('referer'))
         if bearer_token is not None: 
             async with sessionMaker() as session: 
                 await process_user(session=session,user_id=user_id)  #zjištit, je-li uživatel v databázi
-                #zpracovává JWT na základě odpovědí
-                await process_token(session=session,bearer_token=bearer_token,status=response.status_code,response_length=response_length,first_ip=request_ip,user_id=user_id)
+                await process_token(session=session,bearer_token=bearer_token,status=response.status_code,response_length=response_length,first_ip=request_ip,user_id=user_id)  #zpracovává JWT na základě odpovědí
         if( response.status_code!=200):
             request_log(bearer_token=bearer_token,ip_address=request_ip,status_code=response.status_code) #log, když zachytí chybní odpověď
             return JSONResponse(content=json,status_code=418 if str(status_block)=='True' else response.status_code)
@@ -98,6 +97,7 @@ async def GQL_Post(data: Item, request: Request):
     else: 
         request_log(bearer_token=bearer_token,ip_address=request_ip,status_code=status_code[0])
         response=JSONResponse(content=None,status_code=418 if str(status_block)=='True' else status_code[0]) #když JWT je od dalšího zdroje nebo už není platné
+        data_exporter(request_duration=request_duration,respone_length=response_length,success=False,origin=request_ip,method='POST',media_type=request.headers.get('Content-Type'),referer=request.headers.get('Referer'))
         return response
 
 @app.get('/metric')
