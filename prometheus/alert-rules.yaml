@@ -1,0 +1,59 @@
+groups:
+  - name: server_alerts
+    rules:
+      - alert: HighRequestRate
+        expr: sum(rate(server_request_total[1m])) > 0.5
+        for: 5m
+        labels:
+          severity: medium
+        annotations:
+          summary: High request rate
+          description: The number of incoming requests surpasses 500 per minute for at least 5 minutes.
+      - alert: HighFailRequestRate
+        expr: (sum(rate(server_fail_request_total[1m])) / sum(rate(server_request_total[1m]))) > 0.05
+        labels:
+          severity: high
+        annotations:
+          summary: High fail request rate
+          description: The error rate for HTTP requests has exceeded 5% for 1 minute.
+      - alert: PossibleDoS
+        expr: sum(rate(server_request_total[1m])) > 1000 and
+              (rate(server_response_time_seconds_buckets{le="5"}[1m]) - rate(server_response_time_seconds_buckets{le="1"}[1m])) 
+              / rate(server_response_time_seconds_buckets{le="5"}[1m]) > 0.5
+        labels:
+          severity: high
+        annotations:
+          summary: Possible DoS attack
+          description: The number of incoming requests surpasses 1000 per minute, and the response speed falls above 1s for 50% of the incoming requests.
+      - alert: SlowProcessTime
+        expr: histogram_quantile(0.95, sum(rate(server_response_time_seconds_bucket[5m])) by (le)) > 3
+        labels:
+          severity: medium
+        annotations:
+          summary: Slow processing time
+          description: Over 5% of all requests take longer than 3 seconds to process.
+      - alert: PossibleInjectionAttack
+        expr: histogram_quantile(0.975, sum(rate(server_response_length_bytes_bucket[1m])) by (le)) > 3000
+        labels:
+          severity: high
+        annotations:
+          summary: Possible Injection attack
+          description: Over 2.5% of incomming request are requesting more data than 3000B
+      - alert: AuthenticationBreach
+        expr: rate(server_authentication_rejected_total[60m]) * 3600 > 60
+        labels:
+          severity: high
+        annotations:
+          summary: Possible breach in authentication
+          descriptiion: Database rejected more than 60 request due to authentication problem per hour
+
+  - name: client-alert
+    rules:
+      - alert: HighRequestRateClient
+        expr: sum(rate(client_request_total[1m])) by (client) > 0.25
+        for: 2m
+        labels:
+          severity: medium
+        annotations:
+          summary: "High client request rate from {{ $labels.client }}"
+          description: "{{ $labels.client }} is sending requests at a rate higher than 1000 requests per minute for 2 minutes."

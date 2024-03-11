@@ -8,7 +8,6 @@ class BaseModel(DeclarativeBase):
     pass
 class User(BaseModel):
     __tablename__ = "users"
-
     id = Column(Uuid, primary_key=True, comment="primary key", default=uuid.uuid1())
     valid = Column(Boolean,comment = 'Valid user', default=True)
     #used_token = relationship('Token',back_populates='user')
