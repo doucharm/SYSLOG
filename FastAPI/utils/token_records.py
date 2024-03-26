@@ -2,7 +2,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.schema import Column
 from sqlalchemy import Uuid, String ,Boolean , Integer,DateTime,select
 import uuid
-import time
+import time,os
 import datetime
 import utils.variables
 class BaseModel(DeclarativeBase):
@@ -19,7 +19,6 @@ class Token(BaseModel):
     first_ip=Column(String, comment = 'The first IP address that use this token when recorded',server_default='0.0.0.0')
     first_time=Column(DateTime, comment='The time of which is token is recorded into the database')
     user_id = Column(Uuid)
-
     #user= relationship('User',back_populates="used_token")
 def update(destination, source=None, extraValues={}):
         if source is not None:
@@ -42,7 +41,7 @@ async def get_token(session,search_str):
 async def insert(session, bearer_token,first_ip,user_id):
     newdbrow = Token()
     entity={"bearer_token":bearer_token,'id':uuid.uuid1(),'valid':True,'first_time':datetime.datetime.now(),'first_ip':first_ip,'user_id':user_id}
-    #když nový JWT je přidán, všechny další atributy jsou 0 
+    #new token is recognised and inserted into the database to monitor
     for key, value in entity.items():
         setattr(newdbrow,key,value)
     async with session.begin():
@@ -52,105 +51,51 @@ async def insert(session, bearer_token,first_ip,user_id):
         row = next(rows, None)
         if row is None:
             session.add(newdbrow)
-async def response_length_change(session,bearer_token,added_length):
-    async with session:
+async def token_update(session,bearer_token,status,response_length):
+   async with session:
         statement=select(Token).filter_by(bearer_token=bearer_token)
         rows=await session.execute(statement)
         rows=rows.scalars()
         rowToUpdate=next(rows,None)
-        entity=rowToUpdate
-        entity.response_length=(rowToUpdate.response_length*(rowToUpdate.number_of_request-1)+added_length)/(rowToUpdate.number_of_request) 
-        #pruměrné délka za jeden dotaz (včetně chybních dotazů)
-        rowToUpdate = update(rowToUpdate, entity)
+        rowToUpdate.number_of_request=rowToUpdate.number_of_request+1
+        if status==200:
+            if rowToUpdate.number_of_request==1:
+                rowToUpdate.response_length=response_length
+            else:
+                rowToUpdate.response_length=(rowToUpdate.response_length*(rowToUpdate.number_of_request-1 - rowToUpdate.number_of_fail_request)+response_length)/rowToUpdate.number_of_request
+        else:
+            rowToUpdate.number_of_fail_request=rowToUpdate.number_of_fail_request+1
         await session.commit()
-async def token_update(session,update_function,search_str):
-    async with session:
-        statement=select(Token).filter_by(bearer_token=search_str)
-        rows=await session.execute(statement)
-        rows=rows.scalars()
-        rowToUpdate=next(rows,None)
-        entity=update_function(rowToUpdate) #změnit atributy
-        rowToUpdate = update(rowToUpdate, entity)
-        await session.commit()
-def request_count_increase(rowToUpdate):
-    entity=rowToUpdate
-    entity.number_of_request=rowToUpdate.number_of_request+1
-    return entity
-def fail_request_count_increase(rowToUpdate):
-    entity=rowToUpdate
-    entity.number_of_fail_request=rowToUpdate.number_of_fail_request+1
-    return entity
 async def process_token(session,bearer_token,status,response_length,first_ip,user_id):
-    """
-    Process a bearer token by inserting data into the database and updating related information.
-
-    Parameters:
-    - session (sqlalchemy.orm.Session): The SQLAlchemy session to interact with the database.
-    - bearer_token (str): The bearer token to be processed.
-    - status (int): The HTTP status code of the associated request.
-    - response_length (int): The length of the response received.
-    - first_ip (str): The IP address from which the request originated.
-    - user_id (int): The ID of the user associated with the token.
-
-    Returns:
-    None
-
-    This function processes a bearer token by attempting to insert data into the database and updating
-    related information. It retries up to 10 times in case of errors during database operations.
-
-    """
-    str_error=True
-    limit=0
-    while str_error==True and limit<10: #skouší změnit data v databáze o 10 pokusů
+    need_retry=True
+    retry_count=0
+    retry_limit=int(os.environ.get('RETRY_LIMIT','10'))
+    while need_retry and retry_count <= retry_limit: #Attempt to update already existing token with new information
         try:
             await insert(session=session,bearer_token=bearer_token,first_ip=first_ip,user_id=user_id)
-            await token_update(session=session,update_function=request_count_increase,search_str=bearer_token)
+            await token_update(session=session,bearer_token=bearer_token,status=status,response_length=response_length)
         except Exception as e:
-            str_error=True
-            time.sleep(0.1) #čekání a pak znovu zkuší 
-            limit=limit+1
+            need_retry=True
+            time.sleep(0.05)
+            retry_count=retry_count+1
         else:
-            str_error = False
-    str_error2=True
-    while str_error2==True and limit<10:
-        try:
-            limit=limit+1
-            if status!=200: #selhání rozumíme dotaz s kód !=200
-                await token_update(session=session,update_function=fail_request_count_increase,search_str=bearer_token)
-            else :
-                await response_length_change(session=session,bearer_token=bearer_token,added_length=response_length)
-            
-        except Exception as e:
-            str_error2=True
-            time.sleep(0.1)
-        else:
-            str_error2 = False
+            need_retry = False
+    if retry_count>retry_limit:
+        print('Failed to update token +{bearer_token}')
 async def check_token_validity(session,bearer_token,ip_address,status_code):
-    """
-    Check the validity of a bearer token by querying the database.
-
-    Parameters:
-    - session (sqlalchemy.orm.Session): The SQLAlchemy session to interact with the database.
-    - bearer_token (str): The bearer token to be checked for validity.
-    - ip_address (str): The IP address from which the request originated.
-    - status_code (list): A list containing the HTTP status code to be updated based on the token validity.
-
-    Returns:
-    bool: True if the token is valid; False otherwise.
-
-    This function queries the database to check the validity of a bearer token. It verifies the token's
-    originating IP address and checks whether it has exceeded its specified lifespan. If the token is
-    invalid, it updates the 'status_code' list with the appropriate HTTP status code.
-    """
     async with session:
-        pom=await get_token(session=session,search_str=bearer_token)
-        if pom :
-            #JWT přichazel s jiné IP adresu nemůže dále postupovat
-            if pom.first_ip!=ip_address and not str(utils.variables.allow_vpn)=='True':
-                status_code[0]=429 #překrotí limit vysílaní dotazů
+        jwt_token=await get_token(session=session,search_str=bearer_token) #check wether there is an token the database already
+        if jwt_token==None:
+            return True
+        else:
+            if not jwt_token.valid:
                 return False
-            #JWT má živostnost uvedeno v variable.js
-            time_diffirence=datetime.datetime.now()-pom.first_time
+            #Check for IP addresses
+            if jwt_token.first_ip!=ip_address and not str(utils.variables.allow_vpn)=='True':
+                status_code[0]=429 #Code 429 indicate that the "source" has already sent too much request
+                return False
+            #JWT have a time limit which are checked 
+            time_diffirence=datetime.datetime.now()-jwt_token.first_time
             if time_diffirence.total_seconds() > int(utils.variables.token_life_limit):
                 status_code[0]=401 #neauthorizační přístup => JWT prošel živostnost
                 return False

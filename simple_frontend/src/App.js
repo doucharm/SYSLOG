@@ -38,6 +38,13 @@ export const App =() =>
             json =>groupFetchContentState(JSON.stringify(json))
         )
         }
+    const Fetch100 =() =>
+    {
+        for ( let i=0;i<100; i++)
+        {
+            Query_Call({id:"89d1f3cc-ae0f-11ed-9bd8-0242ac110002",JSONquery:UserQueryJSON,params:CreateHeader()})
+        }
+    }
     return(
         <>
         <button onClick={event => FetchUser()} >Send request to get user</button>
@@ -47,6 +54,7 @@ export const App =() =>
         <button onClick={event => FetchGroup()} >Send request to get group</button>
         <br />
         <text>{groupFetchContent}</text>
+        <button onClick={event => Fetch100()}>100 requests at once</button>
         </>
     )
 

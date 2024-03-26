@@ -114,7 +114,7 @@ async def token_insert(self, info: strawberry.types.Info, token: TokenInsertGQLM
     if token.id is None:
         token.id=uuid.uuid1()
     token.first_time=datetime.datetime.now()
-
+    token.valid=True
     loader = getLoadersFromInfo(info).tokens
     row = await loader.insert(token)
     result = TokenResultGQLModel()

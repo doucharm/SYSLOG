@@ -57,3 +57,4 @@ groups:
         annotations:
           summary: "High client request rate from {{ $labels.client }}"
           description: "{{ $labels.client }} is sending requests at a rate higher than 1000 requests per minute for 2 minutes."
+      - alert: 
