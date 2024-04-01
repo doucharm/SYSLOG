@@ -20,7 +20,7 @@ def get_origin_ip_address(headers):
         raise KeyError('No origin IP address found')
     return origin
 def get_request_header_data(headers):
-    print(headers)
+
     bearer_token=get_header_authentication(headers)
     origin=get_origin_ip_address(headers)
     referer = headers.get('referer')

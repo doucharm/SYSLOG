@@ -14,3 +14,4 @@ class User(BaseModel):
     number_of_unauthorized_request=Column(Integer,comment='Number of request that is rejected due to having no permission',default=0)
 
     used_token = relationship('Token',back_populates='user')
+    

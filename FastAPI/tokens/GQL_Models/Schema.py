@@ -13,6 +13,9 @@ class Query:
     GetViolationByID=violation_by_id
     GetViolationByUser=violation_by_user
     GetAllViolation=violation_list
+    from .RougeAccessModel import rougeaccess_by_id,rougeaccess_list
+    GetRougeAccessByID=rougeaccess_by_id
+    GetAllRougeAccess=rougeaccess_list
 
 @strawberry.type(description="""Type for mutation root""")
 class Mutation:

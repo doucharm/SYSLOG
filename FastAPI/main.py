@@ -33,8 +33,8 @@ def get_context():
     from tokens.utils.Resolvers import createLoadersContext
     return createLoadersContext(appcontext["asyncSessionMaker"])
 graphql_app = GraphQLRouter(schema,context_getter=get_context)
-app.include_router(graphql_app, prefix="/tokens/gql") #graphiql na testování 
-metrics=make_asgi_app() #vytvořit Prometheus instance na sledování a zasílaní dat sledování do dedikační Prometheus serveru
+app.include_router(graphql_app, prefix="/tokens/gql") #GraphiQL endpoint provides a viewpoint into the database 
+metrics=make_asgi_app() #instrument own's Prometheus 
 app.mount("/metrics",metrics)
 class Item( BaseModel ):
     query: str
@@ -57,6 +57,7 @@ async def GQL_Post(data: Item, request: Request):
     status_code=[400]
     req=get_request_header_data(request.headers)
     request_duration=None
+    res=None
     if await check_token_validity(session=sessionMaker(),bearer_token=req['bearer_token'],ip_address=req['origin'],status_code=status_code): #provedení kontroly živostnost a zdroje JWT
     
         time_start=time.time()
@@ -73,7 +74,7 @@ async def GQL_Post(data: Item, request: Request):
                 response=JSONResponse(content=json, status_code=resp.status)
             except Exception as e:
                 response=JSONResponse(content=json, status_code=500)
-        res=get_response_header_data(response.raw_headers)
+        res= get_response_header_data(response.raw_headers)
         if req['bearer_token'] is not None: 
             async with sessionMaker() as session: 
                 await process_user(session=session,user_id=req['user_id'])
@@ -86,7 +87,6 @@ async def GQL_Post(data: Item, request: Request):
     else: 
         request_log(bearer_token=req['bearer_token'],ip_address=req['origin'],status_code=status_code[0])
         response=JSONResponse(content=None,status_code=418 if str(status_block)=='True' else status_code[0])
-        data_exporter(request_duration=request_duration,respone_length=res['response_length'],success=False,method='POST',origin=req['origin'],media_type=res['mime_type'],referer=req['referer'])
         server_authentication_rejected_total.inc()
         return response
 

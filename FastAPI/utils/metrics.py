@@ -1,7 +1,6 @@
 from prometheus_client import Counter,Histogram
 #Set up Prometheus metrics to monitor the traffic
 server_request_total = Counter("server_request_total","Number of requests")
-server_post_request_total = Counter("server_post_request_total","Number of post requests")
 server_fail_request_total = Counter("server_fail_request_total","Number of failed requests")
 server_response_time_seconds_bucket = Histogram('server_response_time_seconds_bucket',"Wait time for request sent",buckets=[0,0.1,0.2,0.3,0.4,0.5,0.75,1,2,5])
 server_reponse_length_bytes_bucket = Histogram('server_reponse_length_bytes_bucket','The length of the response from database',buckets=[0,100,200,400,500,750,1000,2000,3000,4000,5000])
@@ -45,7 +44,6 @@ def data_exporter(request_duration:int,
         new_prometheus_origin(origin=origin) #create metrics for this client 
     #Change server metrics 
     server_request_total.inc() 
-    server_post_request_total.inc()
     if success:
         server_reponse_length_bytes_bucket.observe(int(respone_length))
         server_response_time_seconds_bucket.observe(int(request_duration))

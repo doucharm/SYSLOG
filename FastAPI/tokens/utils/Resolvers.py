@@ -5,6 +5,7 @@ from functools import cache
 from tokens.DBModel.DBToken import Token
 from tokens.DBModel.DBUser import User
 from tokens.DBModel.DBViolation import Violation
+from tokens.DBModel.DBRougeAccess import RougeAccess
 def update(destination, source=None, extraValues={}):
     if source is not None:
         for name in dir(source):
@@ -92,6 +93,10 @@ def createLoaders(asyncSessionMaker):
         @cache
         def violations(self):
             return createLoader(asyncSessionMaker,Violation)
+        @property
+        @cache
+        def rougeaccess(self):
+            return createLoader(asyncSessionMaker,RougeAccess)
     return Loaders()
 def createLoadersContext(asyncSessionMaker):
     return {"loaders": createLoaders(asyncSessionMaker)}
