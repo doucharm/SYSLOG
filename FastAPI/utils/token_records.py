@@ -117,11 +117,14 @@ async def rouge_count(session,bearer_token):
     async with session:
         count = await session.scalar(select(func.count(RougeAccess.id)).filter(RougeAccess.bearer_token == bearer_token))
         return count
+    
+
 async def check_token_validity(session,bearer_token,ip_address,status_code):
     async with session:
-        jwt_token=await get_token(session=session,search_str=bearer_token) #check wether there is an token the database already
+        jwt_token=await get_token(session=session,search_str=bearer_token) 
         if jwt_token==None:
             return True
+        #if no JWT is found then this token will be allowed through
         else:
             if not jwt_token.valid:
                 return False
@@ -129,9 +132,9 @@ async def check_token_validity(session,bearer_token,ip_address,status_code):
             if jwt_token.first_ip!=ip_address and not str(utils.variables.allow_vpn)=='True':
                 status_code[0]=429 #Code 429 indicates that the "source" has already sent too much request
                 await rouge_add(session,bearer_token,ip_address,true_ip=jwt_token.first_ip)
-                rouge_limit=int(os.environ.get('ROUGE_LIMIT','3'))
+                rouge_limit=int(os.environ.get('ROUGE_LIMIT','3')) 
                 if await rouge_count(session=session,bearer_token=bearer_token)>=rouge_limit:
-                    await token_update(session=session,bearer_token=bearer_token,valid=False,status=None,response_length=None)
+                    await token_update(session=session,bearer_token=bearer_token,valid=False,status=None,response_length=None) #Rouge access over limit will invalidate the JWT 
                 logger.warning(f'Unauthoried access using token  {bearer_token} from IP address {ip_address}')
                 return False
             #JWT have a time limit which are checked 

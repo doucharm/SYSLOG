@@ -45,7 +45,7 @@ groups:
           severity: high
         annotations:
           summary: Possible breach in authentication
-          descriptiion: Database rejected more than 60 request due to authentication problem per hour
+          description: Database rejected more than 60 request due to authentication problem per hour
 
   - name: client-alert
     rules:
@@ -57,4 +57,3 @@ groups:
         annotations:
           summary: "High client request rate from {{ $labels.client }}"
           description: "{{ $labels.client }} is sending requests at a rate higher than 1000 requests per minute for 2 minutes."
-      - alert: 

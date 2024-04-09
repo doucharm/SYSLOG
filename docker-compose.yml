@@ -76,13 +76,17 @@ services:
     ports:
       - 31125:80
 
-  app:
-    build: 
-      context: ./simple_frontend
-      dockerfile: ./Dockerfile
+  front-end:
+    build: ./simple_frontend
     ports:
-      - '3452:3452'
+      - "${PORT}:3000" 
     environment:
-      - PORT=3452
+      PORT: 3000
+  front-end-2:
+    build: ./simple_frontend
+    ports:
+      - "${PORT}:3002" 
+    environment:
+      PORT: 3002
 volumes:
   prom_data:

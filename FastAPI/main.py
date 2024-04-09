@@ -34,8 +34,11 @@ def get_context():
     return createLoadersContext(appcontext["asyncSessionMaker"])
 graphql_app = GraphQLRouter(schema,context_getter=get_context)
 app.include_router(graphql_app, prefix="/tokens/gql") #GraphiQL endpoint provides a viewpoint into the database 
+
 metrics=make_asgi_app() #instrument own's Prometheus 
+
 app.mount("/metrics",metrics)
+
 class Item( BaseModel ):
     query: str
     variables: dict = None #ViolationModel může záznamovat ty variables (id) pokud chce zjíští,kterého objektů útočník požadá informace 

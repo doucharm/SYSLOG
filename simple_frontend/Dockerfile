@@ -1,6 +1,11 @@
-FROM node:16.14.0-alpine 
-WORKDIR /usr/src
+FROM node:lts-alpine
+
+WORKDIR /app
+
 COPY package*.json ./
+COPY public /app/public  
+COPY src /app/src 
+
 RUN npm install
-COPY . .
-CMD [ "node", "App.js" ]
+EXPOSE ${PORT}
+CMD [ "npm", "start" ]
