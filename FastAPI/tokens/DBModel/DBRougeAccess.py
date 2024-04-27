@@ -1,5 +1,5 @@
 from sqlalchemy.schema import Column
-from sqlalchemy import Uuid, String, DateTime, ForeignKey
+from sqlalchemy import Uuid, String, DateTime
 from . import BaseModel
 import uuid
 

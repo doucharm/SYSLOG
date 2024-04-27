@@ -3,8 +3,6 @@ import strawberry
 import datetime
 import typing
 from tokens.utils.Resolvers import getLoadersFromInfo
-from .GraphPermisson import OnlyForAuthentized
-
 UserGQLModel = typing.Annotated["UserGQLModel", strawberry.lazy(".UserModel")]
 
 
@@ -57,14 +55,14 @@ class TokenGQLModel:
 #################################################################
 ##____________________Query session____________________________##
 #################################################################
-@strawberry.field(description="""Return information about a token when search by id""",permission_classes=[OnlyForAuthentized(isList=False)])
+@strawberry.field(description="""Return information about a token when search by id""")
 async def token_by_id(info: strawberry.types.Info, id: uuid.UUID) -> typing.Optional[TokenGQLModel]:
     return await TokenGQLModel.resolve_reference(info, id)
-@strawberry.field(description="""Return information about a token when search by token""",permission_classes=[OnlyForAuthentized(isList=False)])
+@strawberry.field(description="""Return information about a token when search by token""")
 async def token_by_str(info: strawberry.types.Info,search_str:str) -> typing.Optional[TokenGQLModel]:
     loaders = getLoadersFromInfo(info).tokens
     return await loaders.filter_by(bearer_token = search_str)
-@strawberry.field(description="""Return all tokens in the database""",permission_classes=[OnlyForAuthentized(isList=True)])
+@strawberry.field(description="""Return all tokens in the database""")
 async def token_list(info:strawberry.types.Info) -> typing.List[TokenGQLModel]:
     loaders=getLoadersFromInfo(info).tokens
     result = await loaders.get_all()

@@ -53,21 +53,6 @@ async def process_user(session,user_id):
     """
     Process user by attempting to add the user to the session.
 
-    Parameters:
-    - session (sqlalchemy.orm.Session): The SQLAlchemy session to interact with the database.
-    - user_id (int): The ID of the user to be processed.
-
-    Returns:
-    None
-
-    This function attempts to add a user to the database session, with a maximum of 10 attempts.
-    If the addition is successful, the function sets `updated` to True; otherwise, it catches exceptions,
-    prints an error message, and retries after a short delay.
-
-    Example Usage:
-    ```python
-    await process_user(session, 123)
-    ```
     """
     updated=False
     i=0

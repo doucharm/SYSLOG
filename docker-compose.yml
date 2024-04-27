@@ -81,12 +81,14 @@ services:
     ports:
       - "${PORT}:3000" 
     environment:
-      PORT: 3000
+      - APP_DEST=http://fastapi:8010/gql
+      - PORT = 3000
   front-end-2:
     build: ./simple_frontend
     ports:
       - "${PORT}:3002" 
     environment:
-      PORT: 3002
+      - APP_DEST=http://fastapi:8010/gql
+      - PORT = 3002
 volumes:
   prom_data:

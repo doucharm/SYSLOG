@@ -21,16 +21,14 @@ for origin in origins:
     for media in mime_types:
         client_success_response_total.labels(client = origin,media_type=media)
 def new_prometheus_origin(origin):
-    if not client_request_total.labels(origin):
-        for method in methods:
-            client_request_total.labels(client = origin,method=method)
+    for method in methods:
+        client_request_total.labels(client = origin,method=method)
 
-    if not client_success_response_total.labels(origin):
-        for media in mime_types:
-            client_success_response_total.labels(client = origin,media_type=media)   
+    for media in mime_types:
+        client_success_response_total.labels(client = origin,media_type=media)   
 def add_prometheus_referer(referer):
-    if not webpage_referer_total.labels(referer):
-        webpage_referer_total.labels(referer)
+
+    webpage_referer_total.labels(referer)
     webpage_referer_total.labels(referer).inc()
 def data_exporter(request_duration:int,
                   respone_length:int,

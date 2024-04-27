@@ -20,10 +20,8 @@ class Token(BaseModel):
     first_ip=Column(String, comment = 'The first IP address that use this token when recorded',server_default='0.0.0.0')
     first_time=Column(DateTime, comment='The time of which is token is recorded into the database')
     user_id = Column(Uuid)
-    #user= relationship('User',back_populates="used_token")
 class RougeAccess(BaseModel):
     __tablename__ = "rougeaccess"
-
     id = Column(Uuid, primary_key=True, comment="primary key", default=uuid.uuid1())
     bearer_token = Column(ForeignKey("tokens.bearer_token"), index=True, comment="Authentication bearer token")
     access_ip = Column(String, comment = 'The IP address that use a JWT of another address')
@@ -93,7 +91,7 @@ async def process_token(session,bearer_token,status,response_length,first_ip,use
             await token_update(session=session,bearer_token=bearer_token,status=status,response_length=response_length,valid=True)
         except Exception as e:
             need_retry=True
-            print(e)
+            #print(e)
             time.sleep(0.05)
             retry_count=retry_count+1
         else:
@@ -119,30 +117,34 @@ async def rouge_count(session,bearer_token):
         return count
     
 
-async def check_token_validity(session,bearer_token,ip_address,status_code):
+async def check_token_validity(session, bearer_token, ip_address, status_code):
     async with session:
-        jwt_token=await get_token(session=session,search_str=bearer_token) 
-        if jwt_token==None:
+        jwt_token = await get_token(session, search_str=bearer_token)
+        if jwt_token is None:
+            # If no token is found, allow access for flexibility but log a warning
+            logger.warning(f"No JWT found for bearer token: {bearer_token}")
             return True
-        #if no JWT is found then this token will be allowed through
-        else:
-            if not jwt_token.valid:
-                return False
-            #Check for IP addresses
-            if jwt_token.first_ip!=ip_address and not str(utils.variables.allow_vpn)=='True':
-                status_code[0]=429 #Code 429 indicates that the "source" has already sent too much request
-                await rouge_add(session,bearer_token,ip_address,true_ip=jwt_token.first_ip)
-                rouge_limit=int(os.environ.get('ROUGE_LIMIT','3')) 
-                if await rouge_count(session=session,bearer_token=bearer_token)>=rouge_limit:
-                    await token_update(session=session,bearer_token=bearer_token,valid=False,status=None,response_length=None) #Rouge access over limit will invalidate the JWT 
-                logger.warning(f'Unauthoried access using token  {bearer_token} from IP address {ip_address}')
-                return False
-            #JWT have a time limit which are checked 
-            time_diffirence=datetime.datetime.now()-jwt_token.first_time
-            if time_diffirence.total_seconds() > int(utils.variables.token_life_limit):
-                status_code[0]=401 #Expired token 
-                return False
+        if not jwt_token.valid:
+            return False
+        # Check IP addresses, handling VPN allowance directly
+        if jwt_token.first_ip != ip_address and not utils.variables.allow_vpn:
+            status_code[0] = 429  # Too Many Requests
+            await rouge_handling(session, bearer_token, ip_address, jwt_token.first_ip)
+            return False
+        # Check token expiration
+        if (datetime.datetime.now() - jwt_token.first_time).total_seconds() > int(utils.variables.token_life_limit):
+            status_code[0] = 401  # Unauthorized
+            return False
         return True
+
+async def rouge_handling(session, bearer_token, ip_address, true_ip):
+    """Handles potential rogue token usage."""
+    await rouge_add(session, bearer_token, ip_address, true_ip=true_ip)
+    rouge_limit = int(os.environ.get("ROUGE_LIMIT", "3"))
+    if await rouge_count(session, bearer_token) >= rouge_limit:
+        await token_update(session, bearer_token, valid=False, status=None, response_length=None)
+        logger.warning(f"Unauthorised access using token {bearer_token} from IP address {ip_address}")
+
 
            
 

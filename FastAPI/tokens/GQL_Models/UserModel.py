@@ -2,7 +2,6 @@ import uuid
 import strawberry
 import typing
 from tokens.utils.Resolvers import getLoadersFromInfo
-from .GraphPermisson import OnlyForAuthentized
 
 TokenGQLModel = typing.Annotated["TokenGQLModel", strawberry.lazy(".TokenModel")]
 
@@ -47,10 +46,10 @@ class UserGQLModel:
 # #################################################################
 # ##____________________Query session____________________________##
 # #################################################################
-@strawberry.field(description="""Return information about a client when search by id""",permission_classes=[OnlyForAuthentized(isList=False)])
+@strawberry.field(description="""Return information about a client when search by id""")
 async def user_by_id(info: strawberry.types.Info, id: uuid.UUID) -> typing.Optional[UserGQLModel]:
     return await UserGQLModel.resolve_reference(info, id)
-@strawberry.field(description="""Return all users in the database""",permission_classes=[OnlyForAuthentized(isList=True)])
+@strawberry.field(description="""Return all users in the database""")
 async def user_list(info:strawberry.types.Info) -> typing.List[UserGQLModel]:
     loaders=getLoadersFromInfo(info).users
     result = await loaders.get_all()
