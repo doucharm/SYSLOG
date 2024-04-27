@@ -15,6 +15,6 @@ export const authorizedFetch = (params) => {
 
     const overridenPath = app_dest
     return (
-        fetch("http://localhost:31120/gql", newParams) 
+        fetch(overridenPath, newParams) 
     )
 }

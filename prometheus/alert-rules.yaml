@@ -11,6 +11,7 @@ groups:
           description: The number of incoming requests surpasses 500 per minute for at least 5 minutes.
       - alert: HighFailRequestRate
         expr: (sum(rate(server_fail_request_total[1m])) / sum(rate(server_request_total[1m]))) > 0.05
+        for: 2m
         labels:
           severity: high
         annotations:
