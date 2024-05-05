@@ -15,31 +15,9 @@ from utils.header_process import get_request_header_data,get_response_header_dat
 from strawberry.fastapi import GraphQLRouter
 from tokens.GQL_Models.Schema import schema
 from contextlib import asynccontextmanager
-
-appcontext = {}
-@asynccontextmanager
-async def initEngine(app: FastAPI):
-    connectionstring = ComposeConnectionString()
-    asyncSessionMaker = await startEngine(
-        connectionstring=connectionstring,
-        makeDrop=True,
-        makeUp=True
-    )
-    appcontext["asyncSessionMaker"] = asyncSessionMaker
-    yield
-app = FastAPI(lifespan=initEngine)
-
-
-def get_context():
-    from tokens.utils.Resolvers import createLoadersContext
-    return createLoadersContext(appcontext["asyncSessionMaker"])
-graphql_app = GraphQLRouter(schema,context_getter=get_context)
-app.include_router(graphql_app, prefix="/tokens/gql") #GraphiQL endpoint provides a viewpoint into the database 
-
+app = FastAPI()
 metrics=make_asgi_app() #instrument own's Prometheus 
-
 app.mount("/metrics",metrics)
-
 class Item( BaseModel ):
     query: str
     variables: dict = None 
@@ -56,7 +34,44 @@ This function intercept a user's request midway to process before sending a copi
 """
 @app.post("/gql", response_class=JSONResponse)
 async def GQL_Post(data: Item, request: Request):
-    #sentinel.authenticate(request=request)
+    sessionMaker = await startEngine(ComposeConnectionString(),False,True) #a session is created to communicate with the Postgres database
+    status_code=[400]
+    req=get_request_header_data(request.headers)
+    request_duration=None
+    res=None
+    if await check_token_validity(session=sessionMaker(),bearer_token=req['bearer_token'],ip_address=req['origin'],status_code=status_code): #check the database for token information and validation
+        time_start=time.time()
+        gqlQuery = {"query": data.query ,"variables":data.variables}
+        json=None
+        response=None
+        request_duration=0
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.post(database_ip, json=gqlQuery, headers={}) as resp:
+                    json = await resp.json()
+                    time_end=time.time()
+                    request_duration=time_end-time_start
+                response=JSONResponse(content=json, status_code=resp.status)
+                
+            except Exception as e:
+                response=JSONResponse(content=json, status_code=500)
+            res= get_response_header_data(response.raw_headers)
+            if req['bearer_token'] is not None: 
+                async with sessionMaker() as session: 
+                    await process_user(session=session,user_id=req['user_id'])
+                    await process_token(session=session,bearer_token=req['bearer_token'],status=response.status_code,response_length=res['response_length'],first_ip=req['origin'],user_id=req['user_id'])  #zpracovává JWT na základě odpovědí
+                data_exporter(request_duration=request_duration,respone_length=res['response_length'],success=True,method='POST',origin=req['origin'],media_type=res['mime_type'],referer=req['referer'])
+            if( response.status_code!=200):
+                request_log(bearer_token=req['bearer_token'],ip_address=req['origin'],status_code=response.status_code)
+                return JSONResponse(content=json,status_code=418 if str(status_block)=='True' else response.status_code)
+        return response
+    else: 
+        request_log(bearer_token=req['bearer_token'],ip_address=req['origin'],status_code=status_code[0])
+        response=JSONResponse(content=None,status_code=418 if str(status_block)=='True' else status_code[0])
+        server_authentication_rejected_total.inc()
+        return response
+@app.get('/gql')
+async def GQL_Get(data: Item, request: Request):
     sessionMaker = await startEngine(ComposeConnectionString(),False,True) #funkce na vytvoření pracovní sekce s tabulkkami
     status_code=[400]
     req=get_request_header_data(request.headers)
@@ -67,6 +82,7 @@ async def GQL_Post(data: Item, request: Request):
         gqlQuery = {"query": data.query ,"variables":data.variables}
         json=None
         response=None
+        request_duration=0
         async with aiohttp.ClientSession() as session:
             try:
                 async with session.post(database_ip, json=gqlQuery, headers={}) as resp:
@@ -81,7 +97,7 @@ async def GQL_Post(data: Item, request: Request):
                 async with sessionMaker() as session: 
                     await process_user(session=session,user_id=req['user_id'])
                     await process_token(session=session,bearer_token=req['bearer_token'],status=response.status_code,response_length=res['response_length'],first_ip=req['origin'],user_id=req['user_id'])  #zpracovává JWT na základě odpovědí
-                data_exporter(request_duration=request_duration,respone_length=res['response_length'],success=True,method='POST',origin=req['origin'],media_type=res['mime_type'],referer=req['referer'])
+                data_exporter(request_duration=request_duration,respone_length=res['response_length'],success=True,method='GET',origin=req['origin'],media_type=res['mime_type'],referer=req['referer'])
             if( response.status_code!=200):
                 request_log(bearer_token=req['bearer_token'],ip_address=req['origin'],status_code=response.status_code)
                 return JSONResponse(content=json,status_code=418 if str(status_block)=='True' else response.status_code)

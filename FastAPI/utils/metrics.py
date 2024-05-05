@@ -2,8 +2,8 @@ from prometheus_client import Counter,Histogram
 #Set up Prometheus metrics to monitor the traffic
 server_request_total = Counter("server_request_total","Number of requests")
 server_fail_request_total = Counter("server_fail_request_total","Number of failed requests")
-server_response_time_seconds_bucket = Histogram('server_response_time_seconds_bucket',"Wait time for request sent",buckets=[0,0.1,0.2,0.3,0.4,0.5,0.75,1,2,5])
-server_reponse_length_bytes_bucket = Histogram('server_reponse_length_bytes_bucket','The length of the response from database',buckets=[0,100,200,400,500,750,1000,2000,3000,4000,5000])
+server_response_time_ms = Histogram('server_response_time_ms',"Wait time for request sent",buckets=[0,20,40,50,65,80,100,250,500,1000,2500])
+server_reponse_length_bytes = Histogram('server_reponse_length_bytes','The length of the response from database',buckets=[0,50,100,250,500,750,1000,2000,3500,5000])
 server_authentication_rejected_total=Counter('server_authentication_rejected_total','How many request are rejected by the API due to problem with authentication')
 
 webpage_referer_total=Counter('webpage_referer_total','Number of request comming from a webpage',['referer'])
@@ -14,7 +14,7 @@ client_success_response_total=Counter('client_success_response_total','Number of
 
 mime_types=['application','audio','text','image','video','etc']
 methods=['GET','POST']
-from .variables import origins
+origins=[]
 for origin in origins:
     for method in methods:
         client_request_total.labels(client = origin,method=method)
@@ -43,14 +43,14 @@ def data_exporter(request_duration:int,
     #Change server metrics 
     server_request_total.inc() 
     if success:
-        server_reponse_length_bytes_bucket.observe(int(respone_length))
-        server_response_time_seconds_bucket.observe(int(request_duration))
-    
+        print(request_duration*1000)
+        server_reponse_length_bytes.observe(int(respone_length))
+        server_response_time_ms.observe(request_duration*1000)
+    else:
+        server_fail_request_total.inc()
     #Webpage specific mettrics handler
     if referer:
         add_prometheus_referer(referer)
-
-        
     #Change metrics for client that made the request
     client_request_total.labels(origin,method).inc()
     if success :

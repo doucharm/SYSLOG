@@ -31,7 +31,6 @@ def get_request_header_data(headers):
         'referer' : referer,
         'user_id' : user_id
         }
-
 #####################################
 ##Handle response from the database##
 #####################################
