@@ -115,8 +115,6 @@ async def rouge_count(session,bearer_token):
     async with session:
         count = await session.scalar(select(func.count(RougeAccess.id)).filter(RougeAccess.bearer_token == bearer_token))
         return count
-    
-
 async def check_token_validity(session, bearer_token, ip_address, status_code):
     async with session:
         jwt_token = await get_token(session, search_str=bearer_token)
@@ -124,9 +122,6 @@ async def check_token_validity(session, bearer_token, ip_address, status_code):
             # If no token is found, allow access for flexibility but log a warning
             logger.warning(f"No JWT found for bearer token: {bearer_token}")
             return True
-        print(jwt_token.first_ip)
-        print(ip_address)
-        print(utils.variables.allow_vpn)
         if not jwt_token.valid:
             return False
         # Check IP addresses, handling VPN allowance directly
@@ -138,12 +133,10 @@ async def check_token_validity(session, bearer_token, ip_address, status_code):
         if (datetime.datetime.now() - jwt_token.first_time).total_seconds() > int(utils.variables.token_life_limit):
             status_code[0] = 401  # Unauthorized
             return False
-        print('returned true here')
         return True
 
 async def rouge_handling(session, bearer_token, ip_address, true_ip):
     """Handles potential rogue token usage."""
-    print("rouge handling called")
     await rouge_add(session, bearer_token, ip_address, true_ip=true_ip)
     rouge_limit = int(os.environ.get("ROUGE_LIMIT", "3"))
     if await rouge_count(session, bearer_token) >= rouge_limit:

@@ -2,7 +2,7 @@ from prometheus_client import Counter,Histogram
 #Set up Prometheus metrics to monitor the traffic
 server_request_total = Counter("server_request_total","Number of requests")
 server_fail_request_total = Counter("server_fail_request_total","Number of failed requests")
-server_response_time_ms = Histogram('server_response_time_ms',"Wait time for request sent",buckets=[0,20,40,50,65,80,100,250,500,1000,2500])
+server_response_time_ms = Histogram('server_response_time_ms',"Wait time for request sent",buckets=[0,5,10,15,20,25,30,40,50,65,80,100,250,500,1000,2500])
 server_reponse_length_bytes = Histogram('server_reponse_length_bytes','The length of the response from database',buckets=[0,50,100,250,500,750,1000,2000,3500,5000])
 server_authentication_rejected_total=Counter('server_authentication_rejected_total','How many request are rejected by the API due to problem with authentication')
 

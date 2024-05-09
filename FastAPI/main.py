@@ -52,7 +52,6 @@ async def GQL_Post(data: Item, request: Request):
                     time_end=time.time()
                     request_duration=time_end-time_start
                 response=JSONResponse(content=json, status_code=resp.status)
-                
             except Exception as e:
                 response=JSONResponse(content=json, status_code=500)
             res= get_response_header_data(response.raw_headers)
@@ -107,7 +106,6 @@ async def GQL_Get(data: Item, request: Request):
         response=JSONResponse(content=None,status_code=418 if str(status_block)=='True' else status_code[0])
         server_authentication_rejected_total.inc()
         return response
-
 @app.get('/metric')
 async def get_metrics():
     return Response(

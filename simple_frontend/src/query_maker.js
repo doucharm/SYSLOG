@@ -1,7 +1,7 @@
 import { authorizedFetch } from "./utils"
 export const UserQueryJSON = (id) => ({
     "query":
-        `query ($id: ID!) {
+        `query ($id:UUID!) {
             userById(id: $id) {
                 id
                 name
@@ -13,37 +13,13 @@ export const UserQueryJSON = (id) => ({
                   group {
                     name
                     id
-                    roles {
-                        lastchange
-                        id
-                        roletype{
-                            nameEn 
-                        }
-                    }
                     mastergroup{
                         name
                         id
-                        roles{
-                            lastchange
-                            id
-                            roletype{
-                                nameEn
-                            }
-                        }
                     }
                   }
                 }
-                roles {
-                    lastchange
-                    id
-                    valid
-                    group{
-                        id
-                    }
-                roletype {
-                    nameEn
-                }
-                }
+
             }
         }`,
     "variables": { "id": id }

@@ -1,5 +1,5 @@
 import {useState,useEffect} from 'react'
-import { Query_Call,GroupQueryJSON,UserQueryJSON } from './query_maker'
+import { Query_Call,UserQueryJSON } from './query_maker'
 import { id_list_user,id_list_group,list_bearer_token } from './variables'
 
 const CreateHeader = ({ jwt_index }) => {
@@ -38,7 +38,6 @@ export const App = () => {
             id: fetchID,
             JSONquery: UserQueryJSON,
             params: CreateHeader({ jwt_index })
-            
         }).then(response => {
             const responseTime = new Date() - starttime;
             setResponseTime(responseTime);
@@ -51,7 +50,42 @@ export const App = () => {
             set_requested_id("")
         });
     };
-
+    const FetchErorSQLi = () => {
+        const starttime = new Date();
+        Query_Call({
+            id: 'mass',
+            JSONquery: UserQueryJSON,
+            params: CreateHeader({ jwt_index })
+        }).then(response => {
+            const responseTime = new Date() - starttime;
+            setResponseTime(responseTime);
+            setResponseTimeArray([...response_time, responseTime]); // Update response_time array
+            console.log(response_time)
+            Get_Average_Response_Time({ response_time: response_time, added_time: responseTime, setAverageTime: setAverageTime });
+            const statusCode = response.status;
+            setResponseStatus(statusCode);
+            response.json().then(res => setResponseLength(JSON.stringify(res).length));
+            set_requested_id("")
+        });
+    };
+    const FetchErorDoS = () => {
+        const starttime = new Date();
+        Query_Call({
+            id: 'wait',
+            JSONquery: UserQueryJSON,
+            params: CreateHeader({ jwt_index })
+        }).then(response => {
+            const responseTime = new Date() - starttime;
+            setResponseTime(responseTime);
+            setResponseTimeArray([...response_time, responseTime]); // Update response_time array
+            console.log(response_time)
+            Get_Average_Response_Time({ response_time: response_time, added_time: responseTime, setAverageTime: setAverageTime });
+            const statusCode = response.status;
+            setResponseStatus(statusCode);
+            response.json().then(res => setResponseLength(JSON.stringify(res).length));
+            set_requested_id("")
+        });
+    };
     const Fetch100 = () => {
         const id_list = id_list_group.concat(id_list_user);
         for (let i = 0; i < 100; i++) {
@@ -104,6 +138,8 @@ export const App = () => {
             <br />
             <button onClick={event => Fetch100()}>Generate mass requests</button>
             {Automatic_Request()}
+            <button onClick={event => FetchErorSQLi()}>SQLi</button>
+            <button onClick={event => FetchErorDoS()}>DoS</button>
             <h3>Request Parameters</h3>
             <table>
                 <tbody>
