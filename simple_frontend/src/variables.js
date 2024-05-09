@@ -31,18 +31,3 @@ export const list_bearer_token =
 "TOKEN_4",
 "TOKEN_5"
 ]
- //OPTIONS /gql HTTP/1.1
-/*
-Accept-Encoding: gzip, deflate, br, zstd
-Accept-Language: en-US,en;q=0.9
-Access-Control-Request-Headers: authorization,content-type,user_id
-Access-Control-Request-Method: POST
-Cache-Control: max-age=0
-Connection: keep-alive
-Host: 127.0.0.1:8010
-Origin: http://localhost:57785
-Referer: http://localhost:57785/
-Sec-Fetch-Dest: empty
-Sec-Fetch-Mode: cors
-Sec-Fetch-Site: cross-site
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0 */
